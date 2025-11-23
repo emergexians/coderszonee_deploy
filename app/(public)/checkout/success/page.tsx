@@ -1,10 +1,9 @@
-// app/checkout/success/page.tsx
+// app/checkout/success/page.tsx 
 "use client";
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
-import { color } from "framer-motion";
 
 type CourseType = "careerpath" | "skillpath" | "course" | "hackathon";
 
@@ -32,7 +31,9 @@ export default function CheckoutSuccess() {
   const conf = TYPE_MAP[type];
 
   const slug = (sp.get("slug") ?? "").trim();
-  const detailUrl = slug ? `${conf.base}/${encodeURIComponent(slug)}` : conf.base;
+  const detailUrl = slug
+    ? `${conf.base}/${encodeURIComponent(slug)}`
+    : conf.base;
   const catalogUrl = conf.base;
 
   return (
@@ -44,7 +45,12 @@ export default function CheckoutSuccess() {
       <h1 className="text-2xl font-bold">You’re {conf.verb}!</h1>
 
       <p className="mt-2 text-gray-600">
-        To proceed, please <a href="/auth/signin"><b>log in</b></a> to your account and complete the payment. We’ve recorded your {conf.verb === "registered" ? "registration" : "enrollment"} for the{" "}
+        To proceed, please{" "}
+        <a href="/auth/signin">
+          <b>log in</b>
+        </a>{" "}
+        to your account and complete the payment. We’ve recorded your{" "}
+        {conf.verb === "registered" ? "registration" : "enrollment"} for the{" "}
         {conf.label}.
       </p>
 

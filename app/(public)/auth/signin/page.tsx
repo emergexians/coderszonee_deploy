@@ -1,7 +1,7 @@
 // app/auth/signin/page.tsx
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
+import { useState, type KeyboardEvent, type ComponentType } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -21,6 +21,15 @@ import { motion } from "framer-motion";
 
 type Role = "admin" | "instructor" | "student";
 
+type SignInResponse = {
+  user?: {
+    role?: string;
+  };
+  role?: string;
+  error?: string;
+  message?: string;
+};
+
 export default function SignInPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -35,9 +44,9 @@ export default function SignInPage() {
   const getDashboardPath = (r: Role) => {
     switch (r) {
       case "admin":
-        return "/admin"; // or /admin/dashboard if you add it
+        return "/admin";
       case "instructor":
-        return "/instructor/dashboard";   // change when you build instructor area
+        return "/instructor/dashboard";
       case "student":
       default:
         return "/student/dashboard";
@@ -56,15 +65,36 @@ export default function SignInPage() {
         body: JSON.stringify({ email, password, keep, role }),
       });
 
-      const j = await res.json().catch(() => ({} as any));
-      if (!res.ok) throw new Error(j?.error || j?.message || "Sign in failed");
+      let j: SignInResponse | null = null;
+      try {
+        j = (await res.json()) as SignInResponse;
+      } catch {
+        j = null;
+      }
+
+      if (!res.ok) {
+        const msg =
+          j?.error ||
+          j?.message ||
+          "Sign in failed";
+        throw new Error(msg);
+      }
+
+      const rawRole =
+        j?.user?.role ?? j?.role ?? role;
 
       const apiRole: Role =
-        j?.user?.role || j?.role || role || "student";
+        rawRole === "admin" || rawRole === "instructor" || rawRole === "student"
+          ? rawRole
+          : "student";
 
       router.push(getDashboardPath(apiRole));
-    } catch (e: any) {
-      setErr(e.message);
+    } catch (e) {
+      if (e instanceof Error) {
+        setErr(e.message);
+      } else {
+        setErr("Sign in failed");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -100,7 +130,8 @@ export default function SignInPage() {
               Welcome back, developer.
             </h2>
             <p className="mt-2 text-white/90 max-w-sm leading-relaxed">
-              Pick up where you left off — courses, projects, paths, and peer reviews await.
+              Pick up where you left off — courses, projects, paths, and peer
+              reviews await.
             </p>
           </div>
 
@@ -108,22 +139,37 @@ export default function SignInPage() {
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 240, damping: 24, delay: 0.05 }}
+            transition={{
+              type: "spring",
+              stiffness: 240,
+              damping: 24,
+              delay: 0.05,
+            }}
             className="relative mt-6 rounded-2xl overflow-hidden ring-1 ring-white/25 bg-black/30 backdrop-blur-sm"
           >
             <div className="flex items-center gap-2 px-3 py-2 bg-black/30">
               <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
               <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
               <span className="h-2.5 w-2.5 rounded-full bg-green-400" />
-              <span className="ml-2 text-xs text-white/70">dev@coderszonee:~/learn</span>
+              <span className="ml-2 text-xs text-white/70">
+                dev@coderszonee:~/learn
+              </span>
             </div>
             <div className="px-4 py-3 text-[12.5px] leading-6 font-mono">
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
                 <span className="text-orange-300">$</span> git pull origin main
               </motion.div>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }}>
-                <span className="text-green-300">✔</span> up to date — jump back into{" "}
-                <span className="underline">Next.js Path</span>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.45 }}
+              >
+                <span className="text-green-300">✔</span> up to date — jump back
+                into <span className="underline">Next.js Path</span>
               </motion.div>
             </div>
           </motion.div>
@@ -131,7 +177,10 @@ export default function SignInPage() {
           {/* Tech chips + CTA */}
           <div className="relative mt-6 flex flex-wrap items-center gap-2">
             {["React", "Next.js", "Node", "SQL", "DevOps"].map((t) => (
-              <span key={t} className="text-xs px-3 py-1 rounded-full bg-white/15 ring-1 ring-white/25">
+              <span
+                key={t}
+                className="text-xs px-3 py-1 rounded-full bg-white/15 ring-1 ring-white/25"
+              >
                 {t}
               </span>
             ))}
@@ -150,13 +199,19 @@ export default function SignInPage() {
         {/* RIGHT: Sign-in form */}
         <div className="bg-white p-6 sm:p-10">
           <div className="mb-6">
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Sign in</h1>
-            <p className="text-sm text-black/60 mt-1">Use your email and password to continue</p>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              Sign in
+            </h1>
+            <p className="text-sm text-black/60 mt-1">
+              Use your email and password to continue
+            </p>
           </div>
 
           {/* Role Selector */}
           <fieldset className="mb-5">
-            <legend className="block text-sm font-medium mb-2">Sign in as</legend>
+            <legend className="block text-sm font-medium mb-2">
+              Sign in as
+            </legend>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <RoleCard
                 title="Student"
@@ -184,7 +239,8 @@ export default function SignInPage() {
               />
             </div>
             <p className="mt-2 text-[12px] text-black/60">
-              If your account has a different role, we’ll use that automatically.
+              If your account has a different role, we’ll use that
+              automatically.
             </p>
           </fieldset>
 
@@ -208,7 +264,9 @@ export default function SignInPage() {
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium mb-1">Password</label>
+              <label className="block text-sm font-medium mb-1">
+                Password
+              </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-2.5 h-5 w-5 text-black/40" />
                 <input
@@ -230,7 +288,9 @@ export default function SignInPage() {
                   {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              {capsLock && <p className="mt-2 text-xs text-orange-600">Caps Lock is ON</p>}
+              {capsLock && (
+                <p className="mt-2 text-xs text-orange-600">Caps Lock is ON</p>
+              )}
             </div>
 
             {/* Options */}
@@ -266,43 +326,20 @@ export default function SignInPage() {
               disabled={submitting}
               className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-black/90 disabled:opacity-60"
             >
-              {submitting ? <Loader2 className="animate-spin" size={18} /> : null}
+              {submitting ? (
+                <Loader2 className="animate-spin" size={18} />
+              ) : null}
               Sign In
             </button>
           </form>
 
-          {/* Divider */}
-          <div className="flex items-center gap-3 my-6">
-            <div className="h-px flex-1 bg-black/10" />
-            <span className="text-xs text-black/50">Or continue with</span>
-            <div className="h-px flex-1 bg-black/10" />
-          </div>
-
-          {/* Social (dev-first) */}
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="h-10 px-4 inline-flex items-center gap-2 rounded-full border border-black/15 hover:bg-black/5"
-              aria-label="Continue with GitHub"
-            >
-              <Github size={18} /> GitHub
-            </button>
-            <button
-              type="button"
-              className="h-10 px-4 inline-flex items-center gap-2 rounded-full border border-black/15 hover:bg-black/5"
-              aria-label="Continue with Google"
-            >
-              <span className="grid place-items-center h-4 w-4 rounded-full font-bold text-[11px] bg-orange-500 text-white">
-                G
-              </span>{" "}
-              Google
-            </button>
-          </div>
-
           {/* Sign up hint */}
           <p className="mt-6 text-sm text-black/70">
             New here?{" "}
-            <Link href="/auth/signup" className="font-semibold text-orange-600 hover:text-orange-700">
+            <Link
+              href="/auth/signup"
+              className="font-semibold text-orange-600 hover:text-orange-700"
+            >
               Create an account
             </Link>
           </p>
@@ -325,7 +362,7 @@ function RoleCard({
   desc: string;
   selected: boolean;
   onSelect: () => void;
-  Icon: React.ComponentType<{ size?: number; className?: string }>;
+  Icon: ComponentType<{ size?: number; className?: string }>;
   iconBg?: string;
 }) {
   return (
@@ -333,7 +370,11 @@ function RoleCard({
       type="button"
       onClick={onSelect}
       className={`text-left rounded-2xl border p-3 transition w-full
-        ${selected ? "border-orange-500 ring-2 ring-orange-200 bg-orange-50" : "border-black/15 hover:bg-black/5"}
+        ${
+          selected
+            ? "border-orange-500 ring-2 ring-orange-200 bg-orange-50"
+            : "border-black/15 hover:bg-black/5"
+        }
       `}
       aria-pressed={selected}
       aria-label={`Select ${title} role`}

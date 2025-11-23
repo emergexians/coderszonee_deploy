@@ -165,7 +165,6 @@ export default function SignUpPage() {
             </legend>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <RoleCard
-                role="student"
                 title="Student"
                 desc="Learn & track progress"
                 selected={role === "student"}
@@ -173,7 +172,6 @@ export default function SignUpPage() {
                 Icon={GraduationCap}
               />
               <RoleCard
-                role="instructor"
                 title="Instructor"
                 desc="Create courses & assess"
                 selected={role === "instructor"}
@@ -181,7 +179,6 @@ export default function SignUpPage() {
                 Icon={UserCog}
               />
               <RoleCard
-                role="admin"
                 title="Admin"
                 desc="Manage platform & users"
                 selected={role === "admin"}
@@ -403,7 +400,7 @@ export default function SignUpPage() {
               <div className="h-7 w-7 rounded-lg bg-white/15 grid place-items-center ring-1 ring-white/30">
                 <ChevronLeft size={16} />
               </div>
-              <span>
+            <span>
                 <Link href="/">Back to Home</Link>
               </span>
             </div>
@@ -421,14 +418,21 @@ export default function SignUpPage() {
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 240, damping: 24, delay: 0.05 }}
+            transition={{
+              type: "spring",
+              stiffness: 240,
+              damping: 24,
+              delay: 0.05,
+            }}
             className="relative mt-6 rounded-2xl overflow-hidden ring-1 ring-white/25 bg-black/30 backdrop-blur-sm"
           >
             <div className="flex items-center gap-2 px-3 py-2 bg-black/30">
               <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
               <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
               <span className="h-2.5 w-2.5 rounded-full bg-green-400" />
-              <span className="ml-2 text-xs text-white/70">dev@coderszonee:~</span>
+              <span className="ml-2 text-xs text-white/70">
+                dev@coderszonee:~
+              </span>
             </div>
             <div className="px-4 py-3 text-[12.5px] leading-6 font-mono">
               <motion.div
@@ -436,7 +440,8 @@ export default function SignUpPage() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
               >
-                <span className="text-orange-300">$</span> npm i @coderszonee/cli
+                <span className="text-orange-300">$</span> npm i
+                @coderszonee/cli
               </motion.div>
               <motion.div
                 initial={{ opacity: 0 }}
@@ -450,15 +455,16 @@ export default function SignUpPage() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.7 }}
               >
-                <span className="text-orange-300">$</span> coderszonee init nextjs
+                <span className="text-orange-300">$</span> coderszonee init
+                nextjs
               </motion.div>
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.95 }}
               >
-                <span className="text-green-300">✔</span> project scaffolded — open{" "}
-                <span className="underline">/learn</span>
+                <span className="text-green-300">✔</span> project scaffolded —
+                open <span className="underline">/learn</span>
               </motion.div>
             </div>
           </motion.div>
@@ -509,14 +515,12 @@ export default function SignUpPage() {
 
 /* ---------- Role card component ---------- */
 function RoleCard({
-  role,
   title,
   desc,
   selected,
   onSelect,
   Icon,
 }: {
-  role: Role;
   title: string;
   desc: string;
   selected: boolean;

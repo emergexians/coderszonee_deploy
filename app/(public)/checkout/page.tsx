@@ -14,9 +14,24 @@ export const dynamic = "force-dynamic";
 type CourseType = "skillpath" | "careerpath" | "course";
 type SP = { course?: string; slug?: string };
 
+type CourseDocLean = {
+  _id?: unknown;
+  name?: string;
+  title?: string;
+  desc?: string;
+  duration?: string;
+  level?: string;
+  rating?: number;
+  students?: number;
+  skills?: string[] | null | undefined;
+  img?: string;
+  cover?: string;
+};
+
 function escapeRegExp(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
 function normalizeType(raw: string | null | undefined): CourseType {
   const s = (raw ?? "").toLowerCase().trim();
   if (s === "skillpath" || s === "careerpath" || s === "course") return s;
@@ -38,21 +53,31 @@ export default async function CheckoutPage({
   await dbConnect();
 
   const where = {
-    $or: [{ slug }, { href: { $regex: `/${escapeRegExp(slug)}$`, $options: "i" } }],
+    $or: [
+      { slug },
+      { href: { $regex: `/${escapeRegExp(slug)}$`, $options: "i" } },
+    ],
   };
 
-  let courseDoc: any = null;
+  let courseDoc: CourseDocLean | null = null;
+
   if (courseType === "careerpath") {
-    courseDoc = await CareerPath.findOne(where).lean();
+    courseDoc = await CareerPath.findOne(where).lean<CourseDocLean>();
   } else if (courseType === "skillpath") {
-    courseDoc = await SkillPath.findOne(where).lean();
+    courseDoc = await SkillPath.findOne(where).lean<CourseDocLean>();
   } else {
-    courseDoc = await Course.findOne(where).lean();
+    courseDoc = await Course.findOne(where).lean<CourseDocLean>();
   }
+
   if (!courseDoc) notFound();
 
   // Pricing (customize as needed)
-  const price = courseType === "careerpath" ? 6999 : courseType === "course" ? 2999 : 4999;
+  const price =
+    courseType === "careerpath"
+      ? 6999
+      : courseType === "course"
+      ? 2999
+      : 4999;
   const currency = "INR";
 
   // Normalize fields
@@ -62,8 +87,11 @@ export default async function CheckoutPage({
   const level = courseDoc.level;
   const rating = courseDoc.rating;
   const students = courseDoc.students;
-  const skills: string[] = Array.isArray(courseDoc.skills) ? courseDoc.skills : [];
-  const img = courseDoc.img || courseDoc.cover || "/assets/thumbnails/ai.png";
+  const skills: string[] = Array.isArray(courseDoc.skills)
+    ? courseDoc.skills
+    : [];
+  const img =
+    courseDoc.img || courseDoc.cover || "/assets/thumbnails/ai.png";
 
   const visibleSkills = skills.slice(0, 10);
   const remaining = Math.max(skills.length - visibleSkills.length, 0);
@@ -77,18 +105,30 @@ export default async function CheckoutPage({
         <div className="md:col-span-2 rounded-2xl border bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-black/30">
           <div className="flex gap-4">
             <div className="relative h-28 w-44 overflow-hidden rounded-lg flex-shrink-0">
-              <Image src={img} alt={name} fill className="object-cover" sizes="176px" />
+              <Image
+                src={img}
+                alt={name}
+                fill
+                className="object-cover"
+                sizes="176px"
+              />
             </div>
 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-600/20 dark:text-blue-200">
-                  {courseType === "careerpath" ? "Career Path" : courseType === "skillpath" ? "Skill Path" : "Course"}
+                  {courseType === "careerpath"
+                    ? "Career Path"
+                    : courseType === "skillpath"
+                    ? "Skill Path"
+                    : "Course"}
                 </span>
               </div>
 
               <h2 className="mt-1 font-semibold text-lg truncate">{name}</h2>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{desc}</p>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
+                {desc}
+              </p>
 
               <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
                 {duration && (
@@ -103,12 +143,14 @@ export default async function CheckoutPage({
                 )}
                 {typeof rating === "number" && rating > 0 && (
                   <span className="inline-flex items-center gap-1">
-                    <Star className="h-4 w-4 text-yellow-500" /> {rating.toFixed(1)}
+                    <Star className="h-4 w-4 text-yellow-500" />{" "}
+                    {rating.toFixed(1)}
                   </span>
                 )}
                 {typeof students === "number" && students > 0 && (
                   <span className="inline-flex items-center gap-1">
-                    <Users className="h-4 w-4" /> {students.toLocaleString()}
+                    <Users className="h-4 w-4" />{" "}
+                    {students.toLocaleString()}
                   </span>
                 )}
               </div>
@@ -124,7 +166,9 @@ export default async function CheckoutPage({
                     </span>
                   ))}
                   {remaining > 0 && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">+{remaining} more</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      +{remaining} more
+                    </span>
                   )}
                 </div>
               )}
@@ -146,10 +190,16 @@ export default async function CheckoutPage({
           </div>
 
           {/* Pass the selected type AS-IS */}
-          <CheckoutForm courseType={courseType} slug={slug} price={price} currency={currency} />
+          <CheckoutForm
+            courseType={courseType}
+            slug={slug}
+            price={price}
+            currency={currency}
+          />
 
           <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-            (Demo checkout) This records your enrollment. Replace with your payment gateway later.
+            (Demo checkout) This records your enrollment. Replace with your
+            payment gateway later.
           </p>
         </aside>
       </div>
