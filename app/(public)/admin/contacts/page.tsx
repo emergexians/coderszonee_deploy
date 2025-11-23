@@ -1,4 +1,4 @@
-// app/admin/contacts/page.tsx
+// app/(public)/admin/contacts/page.tsx
 import { dbConnect } from "@/lib/db";
 import { Contact } from "@/models/Contact";
 import ContactsToolbar from "@/components/admin/contact/ContactsToolbar";
@@ -11,9 +11,42 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZES = [10, 25, 50] as const;
 type PageSize = (typeof PAGE_SIZES)[number];
 type Status = "new" | "read" | "archived";
+type StatusParam = Status | "all";
+
+const DEFAULT_PAGE_SIZE: PageSize = 10;
+
+// Reason type inferred from ContactDTO
+type Reason = Exclude<ContactDTO["reason"], undefined>;
+
+type ContactLean = {
+  _id: unknown;
+  name?: string;
+  email?: string;
+  subject?: string;
+  message?: string;
+  status?: Status;
+  createdAt?: Date | string;
+  phone?: string;
+  company?: string;
+  reason?: string | null;
+};
 
 function escapeRegex(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeReason(reason: ContactLean["reason"]): ContactDTO["reason"] {
+  const allowed: Reason[] = [
+    "support",
+    "partnership",
+    "hiring",
+    "feedback",
+    "other",
+  ];
+  if (typeof reason === "string" && allowed.includes(reason as Reason)) {
+    return reason as Reason;
+  }
+  return undefined;
 }
 
 export default async function AdminContactsPage({
@@ -28,30 +61,44 @@ export default async function AdminContactsPage({
 }) {
   await dbConnect();
 
-  // ✅ Await searchParams in Next.js 15+
+  // Next.js 15: searchParams is a Promise
   const sp = await searchParams;
 
-  // -------- Parse & validate params
+  // ---------- Parse & validate params
   const rawQ = (sp?.q ?? "").trim();
   const q = rawQ.slice(0, 200); // cap to avoid expensive regex
-  const statusParam = (sp?.status ?? "all").toLowerCase();
+
+  const rawStatus = (sp?.status ?? "all").toLowerCase();
+  const statusParam: StatusParam = ["new", "read", "archived", "all"].includes(
+    rawStatus as StatusParam,
+  )
+    ? (rawStatus as StatusParam)
+    : "all";
+
   const statusFilter: Status | undefined =
-    (["new", "read", "archived"] as const).includes(statusParam as any)
-      ? (statusParam as Status)
-      : undefined;
+    statusParam === "all" ? undefined : statusParam;
 
   const pageRaw = Number.parseInt(sp?.page || "1", 10);
-  const limitRaw = Number.parseInt(sp?.limit || "10", 10);
-  const perPage: PageSize = (PAGE_SIZES as readonly number[]).includes(limitRaw)
-    ? (limitRaw as PageSize)
-    : 10;
+  const limitRaw = Number.parseInt(sp?.limit || String(DEFAULT_PAGE_SIZE), 10);
 
-  // -------- Build Mongo filter
-  const filter: Record<string, any> = {};
-  if (statusFilter) filter.status = statusFilter;
+  const perPage: PageSize = PAGE_SIZES.includes(limitRaw as PageSize)
+    ? (limitRaw as PageSize)
+    : DEFAULT_PAGE_SIZE;
+
+  // ---------- Build Mongo filter
+  const filter: Record<string, unknown> = {};
+  if (statusFilter) {
+    filter.status = statusFilter;
+  }
+
   if (q) {
     const re = new RegExp(escapeRegex(q), "i");
-    filter.$or = [{ name: re }, { email: re }, { subject: re }, { message: re }];
+    filter.$or = [
+      { name: re },
+      { email: re },
+      { subject: re },
+      { message: re },
+    ];
   }
 
   let total = 0;
@@ -71,9 +118,9 @@ export default async function AdminContactsPage({
       .skip((page - 1) * perPage)
       .limit(perPage)
       .maxTimeMS(10_000)
-      .lean();
+      .lean<ContactLean[]>();
 
-    items = docs.map((d: any) => ({
+    items = docs.map((d): ContactDTO => ({
       _id: String(d._id),
       name: d.name || "",
       email: d.email || "",
@@ -83,17 +130,26 @@ export default async function AdminContactsPage({
       createdAt: d.createdAt ? String(d.createdAt) : undefined,
       phone: d.phone || "",
       company: d.company || "",
-      reason: d.reason || "",
+      reason: normalizeReason(d.reason),
     }));
-  } catch (err: any) {
-    queryError =
-      typeof err?.message === "string"
-        ? err.message
-        : "Failed to load contacts. Please try again.";
+  } catch (err: unknown) {
+    if (
+      err &&
+      typeof err === "object" &&
+      "message" in err &&
+      typeof (err as { message: unknown }).message === "string"
+    ) {
+      queryError = (err as { message: string }).message;
+    } else {
+      queryError = "Failed to load contacts. Please try again.";
+    }
+
     total = 0;
     items = [];
     page = 1;
   }
+
+  const initialStatus: Status | "all" = statusFilter ?? "all";
 
   return (
     <div className="space-y-6">
@@ -103,14 +159,7 @@ export default async function AdminContactsPage({
           Manage messages submitted via your Contact page
           {total ? ` — ${total} total` : ""}.
         </p>
-        <ContactsToolbar
-          initialQ={q}
-          initialStatus={
-            (statusParam as any) === "all" || !statusFilter
-              ? "all"
-              : (statusFilter as any)
-          }
-        />
+        <ContactsToolbar initialQ={q} initialStatus={initialStatus} />
       </header>
 
       {queryError && (
