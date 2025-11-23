@@ -1,0 +1,43 @@
+For create project
+Step1 - npx create-next-app@latest
+
+Useful folder:
+1. package-lock.json: in this all the dependencies with exact version
+
+
+1. For boilar plate code - rafce
+2. Dynamice route - [foldername]
+3. Route Group - (foldername)
+4. ISR - Incremental Static Render
+
+---------------------------------------------------
+Steps to create 
+
+step 1 - Create models
+         // models/Hackathon.ts
+
+step 2 - Create api
+         // app/api/hackathons/route.ts
+         // app/api/hackathons/[id]/route.ts
+
+step 3 - Create Component
+         // components/admin/HackathonsAdmin.tsx
+
+step 4 - Create App level
+         // app/admin/hackathons/page.tsx
+
+step 5 - Create Public level
+         // app/(public)/hackathons/page.tsx
+
+step 6 - Create slug file in public level
+         // app/(public)/hackathons/[slug]/page.tsx
+
+
+
+
+
+
+
+
+
+
