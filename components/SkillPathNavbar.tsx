@@ -2,14 +2,8 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import {
-  Clock,
-  GraduationCap,
-  Star,
-  Users,
-  Flame,
-  Zap,
-} from "lucide-react";
+import Link from "next/link";
+import { Clock, GraduationCap, Star, Users } from "lucide-react";
 
 const skillPaths = [
   {
@@ -112,7 +106,7 @@ export default function SkillPathNavbar() {
                     {path.desc}
                   </p>
 
-                  {/* ✅ Stats in one responsive line */}
+                  {/* Stats */}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-600 dark:text-gray-300 mt-2">
                     <span className="flex items-center gap-1">
                       <Star className="h-4 w-4 text-yellow-500" />
@@ -134,12 +128,12 @@ export default function SkillPathNavbar() {
 
                   {/* CTA */}
                   <div className="mt-auto pt-4">
-                    <a
+                    <Link
                       href={path.href}
                       className="block w-full text-center bg-blue-500 hover:bg-orange-600 text-white text-sm font-semibold py-2 rounded-md shadow-md transition"
                     >
                       Start Learning →
-                    </a>
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -149,12 +143,12 @@ export default function SkillPathNavbar() {
 
         {/* View All CTA */}
         <div className="mt-8 text-center">
-          <a
+          <Link
             href="/skillpath"
             className="inline-block bg-gradient-to-r from-blue-500 to-blue-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold px-8 py-3 rounded-md shadow-lg transition transform hover:scale-105"
           >
             View All Skill Paths →
-          </a>
+          </Link>
         </div>
       </div>
     </motion.div>

@@ -40,6 +40,17 @@ const initialProfile: Profile = {
   avatarDataUrl: null,
 };
 
+// ---- Error helper (removes any in catch) ----
+function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return "Save failed";
+  }
+}
+
 // ---------- AvatarUploader ----------
 function AvatarUploader({
   value,
@@ -65,6 +76,7 @@ function AvatarUploader({
     <div className="flex items-start gap-4">
       <div className="relative w-28 h-28 rounded-2xl border bg-white shadow-sm overflow-hidden">
         {preview ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={preview}
             alt="Profile preview"
@@ -290,9 +302,7 @@ function PreviewCard({
 }) {
   const initials = useMemo(() => {
     const parts = profile.fullName.trim().split(/\s+/).slice(0, 2);
-    return (
-      parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "?"
-    );
+    return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "?";
   }, [profile.fullName]);
 
   const img = avatarUrl || profile.avatarDataUrl || null;
@@ -302,11 +312,8 @@ function PreviewCard({
       <div className="flex items-center gap-4">
         <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gray-100 grid place-items-center text-gray-500 text-xl font-semibold">
           {img ? (
-            <img
-              src={img}
-              alt="Avatar"
-              className="w-full h-full object-cover"
-            />
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={img} alt="Avatar" className="w-full h-full object-cover" />
           ) : (
             <span>{initials}</span>
           )}
@@ -316,12 +323,9 @@ function PreviewCard({
             {profile.fullName || "Student Name"}
           </h3>
           <p className="text-sm text-gray-600">
-            {profile.branch || "Branch"} •{" "}
-            {profile.graduationYear || "Year"}
+            {profile.branch || "Branch"} • {profile.graduationYear || "Year"}
           </p>
-          <p className="text-sm text-gray-600">
-            {profile.city || "City"}
-          </p>
+          <p className="text-sm text-gray-600">{profile.city || "City"}</p>
         </div>
       </div>
 
@@ -410,9 +414,7 @@ export default function StudentProfilePage() {
     (async () => {
       try {
         const r = await fetch(
-          `/api/student/profile?email=${encodeURIComponent(
-            profile.email
-          )}`,
+          `/api/student/profile?email=${encodeURIComponent(profile.email)}`,
           { signal: controller.signal }
         );
         const j = await r.json();
@@ -439,10 +441,10 @@ export default function StudentProfilePage() {
       if (!r.ok || !j?.ok) throw new Error(j?.error || "Failed to save");
       setStatus({ type: "ok", msg: "Profile saved." });
       if (avatarDataUrl) setProfile((p) => ({ ...p, avatarDataUrl }));
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatus({
         type: "err",
-        msg: err?.message || "Save failed",
+        msg: getErrorMessage(err),
       });
     } finally {
       setSaving(false);
@@ -466,10 +468,7 @@ export default function StudentProfilePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           {/* Left: Form */}
-          <form
-            onSubmit={onSubmit}
-            className={`${brand.card} p-6 space-y-6`}
-          >
+          <form onSubmit={onSubmit} className={`${brand.card} p-6 space-y-6`}>
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-medium">Profile Photo</h2>
               {status && (

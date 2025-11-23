@@ -1,8 +1,15 @@
 // components/admin/PathsAdmin.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import {
   Plus,
   Search,
@@ -83,15 +90,43 @@ type ToastState =
   | { show: false }
   | { show: true; type: "success" | "error" | "info"; msg: string };
 
+// ✅ union narrowed into array OR OPTIONAL-FIELD object
+type ApiListResponse<T> =
+  | T[]
+  | {
+      data?: T[];
+      items?: T[];
+      created?: T | T[];
+      message?: string;
+      error?: string;
+    };
+
 /* =========================
    Constants
 ========================= */
 const LEVELS = ["Beginner", "Intermediate", "Advanced"] as const;
 
 const CATEGORY_MAP: Record<string, string[]> = {
-  "Web Development": ["HTML & CSS", "JavaScript", "React / Next.js", "Node.js", "Full-Stack"],
-  "Data Science": ["Python", "Pandas", "Machine Learning", "Deep Learning", "Statistics"],
-  "AI & ML": ["NLP", "Computer Vision", "Generative AI", "Reinforcement Learning"],
+  "Web Development": [
+    "HTML & CSS",
+    "JavaScript",
+    "React / Next.js",
+    "Node.js",
+    "Full-Stack",
+  ],
+  "Data Science": [
+    "Python",
+    "Pandas",
+    "Machine Learning",
+    "Deep Learning",
+    "Statistics",
+  ],
+  "AI & ML": [
+    "NLP",
+    "Computer Vision",
+    "Generative AI",
+    "Reinforcement Learning",
+  ],
   Business: ["Marketing", "Finance", "Entrepreneurship", "Product Management"],
   Design: ["UI/UX", "Graphic Design", "Figma", "3D & Motion"],
 };
@@ -109,7 +144,7 @@ function Pill({
   children,
 }: {
   tone?: "gray" | "orange" | "green" | "amber" | "blue";
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const tones: Record<string, string> = {
     gray: "bg-gray-100 text-gray-700",
@@ -119,7 +154,12 @@ function Pill({
     amber: "bg-amber-50 text-amber-700",
   };
   return (
-    <span className={cx("px-2.5 py-1 rounded-full text-xs font-medium", tones[tone])}>
+    <span
+      className={cx(
+        "px-2.5 py-1 rounded-full text-xs font-medium",
+        tones[tone]
+      )}
+    >
       {children}
     </span>
   );
@@ -134,7 +174,7 @@ function Field({
   label: string;
   required?: boolean;
   hint?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <div className="space-y-1.5">
@@ -156,11 +196,21 @@ function SkeletonRow() {
           <div className="h-3 w-40 rounded bg-gray-200" />
         </div>
       </td>
-      <td className="px-4 py-4"><div className="h-3 w-16 rounded bg-gray-200" /></td>
-      <td className="px-4 py-4"><div className="h-6 w-24 rounded-full bg-gray-200" /></td>
-      <td className="px-4 py-4"><div className="h-3 w-12 rounded bg-gray-200" /></td>
-      <td className="px-4 py-4"><div className="h-3 w-12 rounded bg-gray-200" /></td>
-      <td className="px-4 py-4"><div className="h-8 w-24 rounded bg-gray-200" /></td>
+      <td className="px-4 py-4">
+        <div className="h-3 w-16 rounded bg-gray-200" />
+      </td>
+      <td className="px-4 py-4">
+        <div className="h-6 w-24 rounded-full bg-gray-200" />
+      </td>
+      <td className="px-4 py-4">
+        <div className="h-3 w-12 rounded bg-gray-200" />
+      </td>
+      <td className="px-4 py-4">
+        <div className="h-3 w-12 rounded bg-gray-200" />
+      </td>
+      <td className="px-4 py-4">
+        <div className="h-8 w-24 rounded bg-gray-200" />
+      </td>
     </tr>
   );
 }
@@ -191,11 +241,12 @@ function UrlOrUpload({
       const body = new FormData();
       body.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body });
-      const data = await res.json();
+      const data = (await res.json()) as { url?: string; error?: string };
       if (!res.ok) throw new Error(data?.error || "Upload failed");
-      onChange(data.url as string);
-    } catch (e: any) {
-      setErr(e?.message || "Upload failed");
+      if (data.url) onChange(data.url);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Upload failed";
+      setErr(msg);
     } finally {
       setUploading(false);
     }
@@ -213,10 +264,12 @@ function UrlOrUpload({
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
-      <label className={cx(
-        "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer",
-        uploading && "opacity-60 pointer-events-none"
-      )}>
+      <label
+        className={cx(
+          "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer",
+          uploading && "opacity-60 pointer-events-none"
+        )}
+      >
         <UploadIcon size={16} />
         {uploading ? "Uploading…" : buttonLabel}
         <input
@@ -281,14 +334,14 @@ function SyllabusBuilder({
     onChange(next);
   }
 
-  // Simple visual required indicator
   const hasAtLeastOne = value.length > 0 && value[0].title.trim() !== "";
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="text-sm text-gray-600">
-          Build sections & topics visually {required && <span className="text-red-500">*</span>}
+          Build sections & topics visually{" "}
+          {required && <span className="text-red-500">*</span>}
         </div>
         <button
           type="button"
@@ -360,7 +413,9 @@ function SyllabusBuilder({
       </div>
 
       {required && !hasAtLeastOne && (
-        <p className="text-xs text-red-600">Please add at least one section with a title.</p>
+        <p className="text-xs text-red-600">
+          Please add at least one section with a title.
+        </p>
       )}
     </div>
   );
@@ -371,22 +426,23 @@ function SyllabusBuilder({
 ========================= */
 async function safeJson<T>(res: Response, fallback: T): Promise<T> {
   try {
-    if (!res) return fallback as T;
-    if (res.status === 204) return fallback as T;
+    if (!res) return fallback;
+    if (res.status === 204) return fallback;
     const ct = res.headers.get("content-type") || "";
-    if (!ct.toLowerCase().includes("application/json")) return fallback as T;
+    if (!ct.toLowerCase().includes("application/json")) return fallback;
     return (await res.json()) as T;
   } catch {
-    return fallback as T;
+    return fallback;
   }
 }
 
-async function getList<T = any>(url: string): Promise<T[]> {
+async function getList<T>(url: string): Promise<T[]> {
   try {
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return [];
-    const json = await safeJson<any>(res, {} as any);
-    const items = Array.isArray(json) ? json : json?.data ?? json?.items;
+    const json = await safeJson<ApiListResponse<T>>(res, []);
+    if (Array.isArray(json)) return json;
+    const items = json.data ?? json.items ?? [];
     return Array.isArray(items) ? items : [];
   } catch {
     return [];
@@ -507,23 +563,35 @@ export default function PathsAdmin() {
   const filteredSkills = useMemo(() => {
     if (!query) return skills;
     return skills.filter((s) =>
-      [s.name, s.level, s.skills?.join(","), s.perks?.join(","), s.syllabus?.map((sec) => sec.title).join(",")]
-        .some((v) => v?.toLowerCase().includes(query))
+      [
+        s.name,
+        s.level,
+        s.skills?.join(","),
+        s.perks?.join(","),
+        s.syllabus?.map((sec) => sec.title).join(","),
+      ].some((v) => v?.toLowerCase().includes(query))
     );
   }, [skills, query]);
 
   const filteredCareers = useMemo(() => {
     if (!query) return careers;
     return careers.filter((c) =>
-      [c.name, c.level, c.skills?.join(","), c.perks?.join(","), c.syllabus?.map((sec) => sec.title).join(",")]
-        .some((v) => v?.toLowerCase().includes(query))
+      [
+        c.name,
+        c.level,
+        c.skills?.join(","),
+        c.perks?.join(","),
+        c.syllabus?.map((sec) => sec.title).join(","),
+      ].some((v) => v?.toLowerCase().includes(query))
     );
   }, [careers, query]);
 
   const filteredCourses = useMemo(() => {
     if (!query) return courses;
     return courses.filter((c) =>
-      [c.title, c.level, c.category, c.subCategory].some((v) => v?.toLowerCase().includes(query))
+      [c.title, c.level, c.category, c.subCategory].some((v) =>
+        v?.toLowerCase().includes(query)
+      )
     );
   }, [courses, query]);
 
@@ -565,7 +633,11 @@ export default function PathsAdmin() {
     setSyllabusCourse([]);
   }
 
-  function askDelete(type: "skill" | "career" | "course", id: string, name: string) {
+  function askDelete(
+    type: "skill" | "career" | "course",
+    id: string,
+    name: string
+  ) {
     setDeleteTarget({ type, id, name });
     setConfirmOpen(true);
   }
@@ -575,14 +647,24 @@ export default function PathsAdmin() {
     const { type, id } = deleteTarget;
     try {
       const res = await fetch(
-        `/api/${type === "skill" ? "skillpaths" : type === "career" ? "careerpaths" : "courses"}/${id}`,
+        `/api/${
+          type === "skill"
+            ? "skillpaths"
+            : type === "career"
+            ? "careerpaths"
+            : "courses"
+        }/${id}`,
         { method: "DELETE" }
       );
       if (!res.ok && res.status !== 204) throw new Error("Delete failed");
       if (type === "skill") setSkills((p) => p.filter((x) => x._id !== id));
-      else if (type === "career") setCareers((p) => p.filter((x) => x._id !== id));
+      else if (type === "career")
+        setCareers((p) => p.filter((x) => x._id !== id));
       else setCourses((p) => p.filter((x) => x._id !== id));
-      showToast(`${type.charAt(0).toUpperCase() + type.slice(1)} deleted`, "success");
+      showToast(
+        `${type.charAt(0).toUpperCase() + type.slice(1)} deleted`,
+        "success"
+      );
     } catch (e) {
       console.error(e);
       showToast("Delete failed", "error");
@@ -592,23 +674,26 @@ export default function PathsAdmin() {
     }
   }
 
-  async function handleCreate(e: React.FormEvent) {
+  async function handleCreate(e: FormEvent) {
     e.preventDefault();
 
     // Paths create
     if (tab === "skills" || tab === "careers") {
       const f = formPath;
 
-      // required checks
       if (!f.name || !f.href || !f.img || !f.desc || !f.duration) {
         showToast("Please fill all required fields", "error");
         return;
       }
-      // syllabus: at least one section title (builder handles visual hints)
-      const syl = syllabusPath.filter((s) => s.title.trim()).map((s) => ({
-        title: s.title.trim(),
-        ...(s.items?.length ? { items: s.items.filter(Boolean).map((x) => x.trim()) } : {}),
-      }));
+
+      const syl = syllabusPath
+        .filter((s) => s.title.trim())
+        .map((s) => ({
+          title: s.title.trim(),
+          ...(s.items?.length
+            ? { items: s.items.filter(Boolean).map((x) => x.trim()) }
+            : {}),
+        }));
 
       setCreating(true);
 
@@ -634,30 +719,53 @@ export default function PathsAdmin() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
+
         if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
+          const j = await safeJson<{ error?: string; message?: string }>(
+            res,
+            {}
+          );
           throw new Error(j?.error || j?.message || "Create failed");
         }
-        const json = await safeJson<any>(res, null as any);
-        const created = json?.created ?? json?.data ?? json;
-        const doc = Array.isArray(created) ? created[0] : created;
+
+        const json = await safeJson<
+          ApiListResponse<SkillPath | CareerPath>
+        >(res, []);
+
+        let doc: SkillPath | CareerPath | undefined;
+
+        if (Array.isArray(json)) {
+          doc = json[0];
+        } else {
+          const created = json.created;
+          if (Array.isArray(created)) doc = created[0];
+          else if (created) doc = created;
+          else doc = json.data?.[0] ?? json.items?.[0];
+        }
 
         if (doc?._id) {
           if (tab === "skills") setSkills((p) => [doc as SkillPath, ...p]);
           else setCareers((p) => [doc as CareerPath, ...p]);
         } else {
-          // fallback refetch
-          const list = await getList<any>(url);
-          if (tab === "skills") setSkills(list as SkillPath[]);
-          else setCareers(list as CareerPath[]);
+          const list =
+            tab === "skills"
+              ? await getList<SkillPath>(url)
+              : await getList<CareerPath>(url);
+
+          if (tab === "skills") setSkills(list);
+          else setCareers(list);
         }
 
-        showToast(`${tab === "skills" ? "Skill Path" : "Career Path"} added`, "success");
+        showToast(
+          `${tab === "skills" ? "Skill Path" : "Career Path"} added`,
+          "success"
+        );
         setOpenCreate(false);
         resetForms();
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err);
-        showToast(err?.message || "Server error", "error");
+        const msg = err instanceof Error ? err.message : "Server error";
+        showToast(msg, "error");
       } finally {
         setCreating(false);
       }
@@ -681,10 +789,14 @@ export default function PathsAdmin() {
         return;
       }
 
-      const syl = syllabusCourse.filter((s) => s.title.trim()).map((s) => ({
-        title: s.title.trim(),
-        ...(s.items?.length ? { items: s.items.filter(Boolean).map((x) => x.trim()) } : {}),
-      }));
+      const syl = syllabusCourse
+        .filter((s) => s.title.trim())
+        .map((s) => ({
+          title: s.title.trim(),
+          ...(s.items?.length
+            ? { items: s.items.filter(Boolean).map((x) => x.trim()) }
+            : {}),
+        }));
 
       setCreating(true);
       const payload = {
@@ -708,22 +820,33 @@ export default function PathsAdmin() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
+
         if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
+          const j = await safeJson<{ error?: string; message?: string }>(
+            res,
+            {}
+          );
           throw new Error(j?.error || j?.message || "Create failed");
         }
-        const created = await safeJson<Course>(res, null as any);
+
+        const created = await safeJson<Course>(
+          res,
+          null as unknown as Course
+        );
+
         if (created?._id) setCourses((p) => [created, ...p]);
         else {
           const list = await getList<Course>("/api/courses");
           setCourses(list);
         }
+
         showToast("Course added", "success");
         setOpenCreate(false);
         resetForms();
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err);
-        showToast(err?.message || "Server error", "error");
+        const msg = err instanceof Error ? err.message : "Server error";
+        showToast(msg, "error");
       } finally {
         setCreating(false);
       }
@@ -742,7 +865,9 @@ export default function PathsAdmin() {
               onClick={() => setTab("skills")}
               className={cx(
                 "px-4 py-2 text-sm font-medium flex items-center gap-2",
-                tab === "skills" ? "bg-orange-600 text-white" : "hover:bg-gray-50"
+                tab === "skills"
+                  ? "bg-orange-600 text-white"
+                  : "hover:bg-gray-50"
               )}
             >
               <GraduationCap size={16} /> Skills
@@ -751,7 +876,9 @@ export default function PathsAdmin() {
               onClick={() => setTab("careers")}
               className={cx(
                 "px-4 py-2 text-sm font-medium",
-                tab === "careers" ? "bg-orange-600 text-white" : "hover:bg-gray-50"
+                tab === "careers"
+                  ? "bg-orange-600 text-white"
+                  : "hover:bg-gray-50"
               )}
             >
               <Layers3 size={16} className="inline-block mr-2" />
@@ -761,7 +888,9 @@ export default function PathsAdmin() {
               onClick={() => setTab("courses")}
               className={cx(
                 "px-4 py-2 text-sm font-medium",
-                tab === "courses" ? "bg-orange-600 text-white" : "hover:bg-gray-50"
+                tab === "courses"
+                  ? "bg-orange-600 text-white"
+                  : "hover:bg-gray-50"
               )}
             >
               <BookOpen size={16} className="inline-block mr-2" />
@@ -793,7 +922,11 @@ export default function PathsAdmin() {
               className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-700"
             >
               <Plus size={16} /> Add{" "}
-              {tab === "skills" ? "Skill Path" : tab === "careers" ? "Career Path" : "Course"}
+              {tab === "skills"
+                ? "Skill Path"
+                : tab === "careers"
+                ? "Career Path"
+                : "Course"}
             </button>
           </div>
         </div>
@@ -812,19 +945,32 @@ export default function PathsAdmin() {
     );
   }
 
-  function RowPath({ item, type }: { item: SkillPath | CareerPath; type: "skill" | "career" }) {
+  function RowPath({
+    item,
+    type,
+  }: {
+    item: SkillPath | CareerPath;
+    type: "skill" | "career";
+  }) {
     const rating = (item.rating ?? 0).toFixed(1);
     const students = (item.students ?? 0).toLocaleString();
-    const levelTone =
-      item.level === "Advanced" ? "amber" : item.level === "Intermediate" ? "blue" : "green";
+    const levelTone: "amber" | "blue" | "green" =
+      item.level === "Advanced"
+        ? "amber"
+        : item.level === "Intermediate"
+        ? "blue"
+        : "green";
 
     return (
       <tr className="hover:bg-gray-50">
         <td className="px-4 py-4">
           <div className="flex items-center gap-3">
-            <img
+            <Image
               src={(item as SkillPath).img || "/assets/thumbnails/ai.png"}
               alt={item.name}
+              width={80}
+              height={48}
+              unoptimized
               className="h-12 w-20 rounded-md object-cover border"
             />
             <div className="min-w-0">
@@ -846,7 +992,9 @@ export default function PathsAdmin() {
                   ))}
                 {Array.isArray((item as SkillPath).syllabus) &&
                   (item as SkillPath).syllabus!.length > 0 && (
-                    <Pill tone="orange">{(item as SkillPath).syllabus!.length} sections</Pill>
+                    <Pill tone="orange">
+                      {(item as SkillPath).syllabus!.length} sections
+                    </Pill>
                   )}
               </div>
             </div>
@@ -858,7 +1006,7 @@ export default function PathsAdmin() {
           </div>
         </td>
         <td className="px-4 py-4">
-          <Pill tone={levelTone as any}>{item.level || "Beginner"}</Pill>
+          <Pill tone={levelTone}>{item.level || "Beginner"}</Pill>
         </td>
         <td className="px-4 py-4">
           <div className="inline-flex items-center gap-1 text-sm text-gray-700">
@@ -887,9 +1035,12 @@ export default function PathsAdmin() {
       <tr className="hover:bg-gray-50">
         <td className="px-4 py-4">
           <div className="flex items-center gap-3">
-            <img
+            <Image
               src={c.cover || "/assets/thumbnails/ai.png"}
               alt={c.title}
+              width={80}
+              height={48}
+              unoptimized
               className="h-12 w-20 rounded-md object-cover border"
             />
             <div className="min-w-0">
@@ -912,7 +1063,15 @@ export default function PathsAdmin() {
           <div className="text-sm text-gray-700">{c.subCategory}</div>
         </td>
         <td className="px-4 py-4">
-          <Pill tone={c.level === "Advanced" ? "amber" : c.level === "Intermediate" ? "blue" : "green"}>
+          <Pill
+            tone={
+              c.level === "Advanced"
+                ? "amber"
+                : c.level === "Intermediate"
+                ? "blue"
+                : "green"
+            }
+          >
             {c.level}
           </Pill>
         </td>
@@ -952,9 +1111,13 @@ export default function PathsAdmin() {
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">Course</th>
                   <th className="px-4 py-3 text-left font-semibold">Category</th>
-                  <th className="px-4 py-3 text-left font-semibold">Sub-Category</th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    Sub-Category
+                  </th>
                   <th className="px-4 py-3 text-left font-semibold">Level</th>
-                  <th className="px-4 py-3 text-left font-semibold">Duration</th>
+                  <th className="px-4 py-3 text-left font-semibold">
+                    Duration
+                  </th>
                   <th className="px-4 py-3 text-left font-semibold">Actions</th>
                 </tr>
               </thead>
@@ -967,12 +1130,16 @@ export default function PathsAdmin() {
                   </>
                 ) : data.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>{EmptyState("No courses yet. Click “Add” to create one.")}</td>
+                    <td colSpan={6}>
+                      {EmptyState("No courses yet. Click “Add” to create one.")}
+                    </td>
                   </tr>
                 ) : (
                   data
                     .slice()
-                    .sort((a, b) => (a.title || "").localeCompare(b.title || ""))
+                    .sort((a, b) =>
+                      (a.title || "").localeCompare(b.title || "")
+                    )
                     .map((c) => <RowCourse key={c._id} c={c} />)
                 )}
               </tbody>
@@ -982,7 +1149,6 @@ export default function PathsAdmin() {
       );
     }
 
-    // Paths table
     const data = tab === "skills" ? filteredSkills : filteredCareers;
     return (
       <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
@@ -1001,7 +1167,9 @@ export default function PathsAdmin() {
                 <th className="px-4 py-3 text-left font-semibold">Path</th>
                 <th className="px-4 py-3 text-left font-semibold">Duration</th>
                 <th className="px-4 py-3 text-left font-semibold">Level</th>
-                <th className="px-4 py-3 text-left font-semibold">Students</th>
+                <th className="px-4 py-3 text-left font-semibold">
+                  Students
+                </th>
                 <th className="px-4 py-3 text-left font-semibold">Rating</th>
                 <th className="px-4 py-3 text-left font-semibold">Actions</th>
               </tr>
@@ -1017,18 +1185,22 @@ export default function PathsAdmin() {
                 <tr>
                   <td colSpan={6}>
                     {EmptyState(
-                      tab === "skills" ? "No skill paths yet. Click “Add” to create one." : "No career paths yet. Click “Add” to create one."
+                      tab === "skills"
+                        ? "No skill paths yet. Click “Add” to create one."
+                        : "No career paths yet. Click “Add” to create one."
                     )}
                   </td>
                 </tr>
               ) : (
                 data
                   .slice()
-                  .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
+                  .sort((a, b) =>
+                    (a.name || "").localeCompare(b.name || "")
+                  )
                   .map((item) => (
                     <RowPath
-                      key={(item as any)._id}
-                      item={item as any}
+                      key={item._id}
+                      item={item}
                       type={tab === "skills" ? "skill" : "career"}
                     />
                   ))
@@ -1040,13 +1212,16 @@ export default function PathsAdmin() {
     );
   }
 
-  // Live previews for forms
   const livePreviewPath =
-    (formPath.img && (formPath.img.startsWith("/") || formPath.img.startsWith("http"))) || false;
+    (formPath.img &&
+      (formPath.img.startsWith("/") || formPath.img.startsWith("http"))) ||
+    false;
   const perksPreviewPath = parseCommaList(formPath.perks).slice(0, 3);
 
   const livePreviewCourse =
-    (formCourse.cover && (formCourse.cover.startsWith("/") || formCourse.cover.startsWith("http"))) ||
+    (formCourse.cover &&
+      (formCourse.cover.startsWith("/") ||
+        formCourse.cover.startsWith("http"))) ||
     false;
   const perksPreviewCourse = parseCommaList(formCourse.perks).slice(0, 3);
 
@@ -1055,12 +1230,10 @@ export default function PathsAdmin() {
   ========================= */
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
-      {/* Toolbar */}
       <div className="mx-auto max-w-7xl px-6">
         <Toolbar />
       </div>
 
-      {/* Content */}
       <div className="mx-auto max-w-7xl px-6 py-6">
         <TableCard />
       </div>
@@ -1092,36 +1265,56 @@ export default function PathsAdmin() {
           resetForms();
         }}
         title={
-          tab === "skills" ? "Add Skill Path" : tab === "careers" ? "Add Career Path" : "Add Course"
+          tab === "skills"
+            ? "Add Skill Path"
+            : tab === "careers"
+            ? "Add Career Path"
+            : "Add Course"
         }
         wide
       >
-        {/* Paths Form */}
         {(tab === "skills" || tab === "careers") && (
-          <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form
+            onSubmit={handleCreate}
+            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          >
             <Field label="Name" required>
               <input
                 required
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formPath.name}
-                onChange={(e) => setFormPath((f) => ({ ...f, name: e.target.value }))}
+                onChange={(e) =>
+                  setFormPath((f) => ({ ...f, name: e.target.value }))
+                }
               />
             </Field>
 
-            <Field label="Page Link (href)" required hint="e.g., /skillpath/react or /careerpath/fullstack">
+            <Field
+              label="Page Link (href)"
+              required
+              hint="e.g., /skillpath/react or /careerpath/fullstack"
+            >
               <input
                 required
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formPath.href}
-                onChange={(e) => setFormPath((f) => ({ ...f, href: e.target.value }))}
+                onChange={(e) =>
+                  setFormPath((f) => ({ ...f, href: e.target.value }))
+                }
               />
             </Field>
 
-            <Field label="Image (URL or Upload)" required hint="click to upload or enter image URL">
+            <Field
+              label="Image (URL or Upload)"
+              required
+              hint="click to upload or enter image URL"
+            >
               <UrlOrUpload
                 required
                 value={formPath.img}
-                onChange={(url) => setFormPath((f) => ({ ...f, img: url }))}
+                onChange={(url) =>
+                  setFormPath((f) => ({ ...f, img: url }))
+                }
                 placeholder="click to upload or enter image URL"
                 buttonLabel="Upload image"
               />
@@ -1132,7 +1325,9 @@ export default function PathsAdmin() {
                 required
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formPath.duration}
-                onChange={(e) => setFormPath((f) => ({ ...f, duration: e.target.value }))}
+                onChange={(e) =>
+                  setFormPath((f) => ({ ...f, duration: e.target.value }))
+                }
               />
             </Field>
 
@@ -1141,7 +1336,9 @@ export default function PathsAdmin() {
                 required
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500 bg-white"
                 value={formPath.level}
-                onChange={(e) => setFormPath((f) => ({ ...f, level: e.target.value }))}
+                onChange={(e) =>
+                  setFormPath((f) => ({ ...f, level: e.target.value }))
+                }
               >
                 {LEVELS.map((lv) => (
                   <option key={lv} value={lv}>
@@ -1151,11 +1348,16 @@ export default function PathsAdmin() {
               </select>
             </Field>
 
-            <Field label="Skills (comma separated)" hint="e.g., React, TypeScript, MongoDB">
+            <Field
+              label="Skills (comma separated)"
+              hint="e.g., React, TypeScript, MongoDB"
+            >
               <input
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formPath.skills}
-                onChange={(e) => setFormPath((f) => ({ ...f, skills: e.target.value }))}
+                onChange={(e) =>
+                  setFormPath((f) => ({ ...f, skills: e.target.value }))
+                }
               />
             </Field>
 
@@ -1167,7 +1369,9 @@ export default function PathsAdmin() {
                 max="5"
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formPath.rating}
-                onChange={(e) => setFormPath((f) => ({ ...f, rating: e.target.value }))}
+                onChange={(e) =>
+                  setFormPath((f) => ({ ...f, rating: e.target.value }))
+                }
               />
             </Field>
 
@@ -1177,7 +1381,9 @@ export default function PathsAdmin() {
                 min="0"
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formPath.students}
-                onChange={(e) => setFormPath((f) => ({ ...f, students: e.target.value }))}
+                onChange={(e) =>
+                  setFormPath((f) => ({ ...f, students: e.target.value }))
+                }
               />
             </Field>
 
@@ -1187,28 +1393,39 @@ export default function PathsAdmin() {
                   required
                   className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500 min-h-[100px]"
                   value={formPath.desc}
-                  onChange={(e) => setFormPath((f) => ({ ...f, desc: e.target.value }))}
+                  onChange={(e) =>
+                    setFormPath((f) => ({ ...f, desc: e.target.value }))
+                  }
                 />
               </Field>
             </div>
 
             <div className="md:col-span-2">
               <Field
-                label={`What you'll get (comma separated)`}
+                label="What you'll get (comma separated)"
                 hint='Example: "Structured lessons, Quizzes & checkpoints, Certificate of completion, Community support"'
               >
                 <input
                   className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                   value={formPath.perks}
-                  onChange={(e) => setFormPath((f) => ({ ...f, perks: e.target.value }))}
+                  onChange={(e) =>
+                    setFormPath((f) => ({ ...f, perks: e.target.value }))
+                  }
                 />
               </Field>
             </div>
 
-            {/* Syllabus Builder */}
             <div className="md:col-span-2">
-              <Field label="Syllabus" required hint="Add sections and topics. At least one section title is required.">
-                <SyllabusBuilder value={syllabusPath} onChange={setSyllabusPath} required />
+              <Field
+                label="Syllabus"
+                required
+                hint="Add sections and topics. At least one section title is required."
+              >
+                <SyllabusBuilder
+                  value={syllabusPath}
+                  onChange={setSyllabusPath}
+                  required
+                />
               </Field>
             </div>
 
@@ -1217,9 +1434,15 @@ export default function PathsAdmin() {
               <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="col-span-1">
                   <div className="text-sm font-medium mb-2">Image Preview</div>
-                  <div className="aspect-[16/9] rounded-xl border bg-gray-50 flex items-center justify-center overflow-hidden">
+                  <div className="aspect-[16/9] rounded-xl border bg-gray-50 flex items-center justify-center overflow-hidden relative">
                     {livePreviewPath ? (
-                      <img src={formPath.img} className="h-full w-full object-cover" alt="preview" />
+                      <Image
+                        src={formPath.img}
+                        alt="preview"
+                        fill
+                        unoptimized
+                        className="object-cover"
+                      />
                     ) : (
                       <div className="text-gray-400 text-sm flex items-center gap-2">
                         <Images size={18} /> Enter URL or upload
@@ -1232,13 +1455,22 @@ export default function PathsAdmin() {
                   <div className="text-sm font-medium mb-2">Card Preview</div>
                   <div className="rounded-xl border bg-white p-4 shadow-sm">
                     <div className="flex items-center gap-3">
-                      <img
-                        src={livePreviewPath ? formPath.img : "/assets/images/thumbnails/ai.png"}
-                        className="h-14 w-24 rounded-md object-cover border"
+                      <Image
+                        src={
+                          livePreviewPath
+                            ? formPath.img
+                            : "/assets/images/thumbnails/ai.png"
+                        }
                         alt=""
+                        width={96}
+                        height={56}
+                        unoptimized
+                        className="h-14 w-24 rounded-md object-cover border"
                       />
                       <div className="min-w-0">
-                        <div className="font-semibold truncate">{formPath.name || "Untitled path"}</div>
+                        <div className="font-semibold truncate">
+                          {formPath.name || "Untitled path"}
+                        </div>
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-600">
                           <span className="inline-flex items-center gap-1">
                             <Clock size={14} /> {formPath.duration || "—"}
@@ -1246,7 +1478,8 @@ export default function PathsAdmin() {
                           <Pill tone="orange">{formPath.level}</Pill>
                           {!!formPath.rating && (
                             <span className="inline-flex items-center gap-1">
-                              <Star size={14} className="text-yellow-500" /> {formPath.rating}
+                              <Star size={14} className="text-yellow-500" />{" "}
+                              {formPath.rating}
                             </span>
                           )}
                           {!!formPath.students && (
@@ -1255,7 +1488,9 @@ export default function PathsAdmin() {
                             </span>
                           )}
                           {syllabusPath?.length ? (
-                            <Pill tone="green">{syllabusPath.length} sections</Pill>
+                            <Pill tone="green">
+                              {syllabusPath.length} sections
+                            </Pill>
                           ) : null}
                         </div>
 
@@ -1299,7 +1534,11 @@ export default function PathsAdmin() {
                 disabled={creating}
                 className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60"
               >
-                {creating ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
+                {creating ? (
+                  <Loader2 className="animate-spin" size={16} />
+                ) : (
+                  <Plus size={16} />
+                )}
                 Create
               </button>
             </div>
@@ -1308,13 +1547,18 @@ export default function PathsAdmin() {
 
         {/* Courses Form */}
         {tab === "courses" && (
-          <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form
+            onSubmit={handleCreate}
+            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          >
             <Field label="Title" required>
               <input
                 required
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formCourse.title}
-                onChange={(e) => setFormCourse((f) => ({ ...f, title: e.target.value }))}
+                onChange={(e) =>
+                  setFormCourse((f) => ({ ...f, title: e.target.value }))
+                }
               />
             </Field>
 
@@ -1323,7 +1567,9 @@ export default function PathsAdmin() {
                 required
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formCourse.duration}
-                onChange={(e) => setFormCourse((f) => ({ ...f, duration: e.target.value }))}
+                onChange={(e) =>
+                  setFormCourse((f) => ({ ...f, duration: e.target.value }))
+                }
               />
             </Field>
 
@@ -1331,7 +1577,9 @@ export default function PathsAdmin() {
               <UrlOrUpload
                 required
                 value={formCourse.cover}
-                onChange={(url) => setFormCourse((f) => ({ ...f, cover: url }))}
+                onChange={(url) =>
+                  setFormCourse((f) => ({ ...f, cover: url }))
+                }
                 placeholder="click to upload or enter image URL"
                 buttonLabel="Upload cover"
               />
@@ -1342,7 +1590,9 @@ export default function PathsAdmin() {
                 required
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500 bg-white"
                 value={formCourse.level}
-                onChange={(e) => setFormCourse((f) => ({ ...f, level: e.target.value }))}
+                onChange={(e) =>
+                  setFormCourse((f) => ({ ...f, level: e.target.value }))
+                }
               >
                 {LEVELS.map((lv) => (
                   <option key={lv} value={lv}>
@@ -1378,7 +1628,9 @@ export default function PathsAdmin() {
                 required
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500 bg-white"
                 value={formCourse.subCategory}
-                onChange={(e) => setFormCourse((f) => ({ ...f, subCategory: e.target.value }))}
+                onChange={(e) =>
+                  setFormCourse((f) => ({ ...f, subCategory: e.target.value }))
+                }
               >
                 {subOptions.map((sub) => (
                   <option key={sub} value={sub}>
@@ -1394,7 +1646,9 @@ export default function PathsAdmin() {
                   required
                   className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                   value={formCourse.href}
-                  onChange={(e) => setFormCourse((f) => ({ ...f, href: e.target.value }))}
+                  onChange={(e) =>
+                    setFormCourse((f) => ({ ...f, href: e.target.value }))
+                  }
                   placeholder="/courses/react-101"
                 />
               </Field>
@@ -1408,7 +1662,9 @@ export default function PathsAdmin() {
                 max="5"
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formCourse.rating}
-                onChange={(e) => setFormCourse((f) => ({ ...f, rating: e.target.value }))}
+                onChange={(e) =>
+                  setFormCourse((f) => ({ ...f, rating: e.target.value }))
+                }
               />
             </Field>
 
@@ -1418,40 +1674,51 @@ export default function PathsAdmin() {
                 min="0"
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formCourse.students}
-                onChange={(e) => setFormCourse((f) => ({ ...f, students: e.target.value }))}
+                onChange={(e) =>
+                  setFormCourse((f) => ({ ...f, students: e.target.value }))
+                }
               />
             </Field>
 
-            {/* Description */}
             <div className="md:col-span-2">
               <Field label="Description" required>
                 <textarea
                   required
                   className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500 min-h-[100px]"
                   value={formCourse.desc}
-                  onChange={(e) => setFormCourse((f) => ({ ...f, desc: e.target.value }))}
+                  onChange={(e) =>
+                    setFormCourse((f) => ({ ...f, desc: e.target.value }))
+                  }
                 />
               </Field>
             </div>
 
-            {/* Perks */}
             <div className="md:col-span-2">
               <Field
-                label={`What you'll get (comma separated)`}
+                label="What you'll get (comma separated)"
                 hint='Example: "Hands-on projects, Quizzes, Certificate of completion, Community support"'
               >
                 <input
                   className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                   value={formCourse.perks}
-                  onChange={(e) => setFormCourse((f) => ({ ...f, perks: e.target.value }))}
+                  onChange={(e) =>
+                    setFormCourse((f) => ({ ...f, perks: e.target.value }))
+                  }
                 />
               </Field>
             </div>
 
-            {/* Syllabus Builder */}
             <div className="md:col-span-2">
-              <Field label="Syllabus" required hint="Add sections and topics. At least one section title is required.">
-                <SyllabusBuilder value={syllabusCourse} onChange={setSyllabusCourse} required />
+              <Field
+                label="Syllabus"
+                required
+                hint="Add sections and topics. At least one section title is required."
+              >
+                <SyllabusBuilder
+                  value={syllabusCourse}
+                  onChange={setSyllabusCourse}
+                  required
+                />
               </Field>
             </div>
 
@@ -1460,9 +1727,15 @@ export default function PathsAdmin() {
               <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="col-span-1">
                   <div className="text-sm font-medium mb-2">Image Preview</div>
-                  <div className="aspect-[16/9] rounded-xl border bg-gray-50 flex items-center justify-center overflow-hidden">
+                  <div className="aspect-[16/9] rounded-xl border bg-gray-50 flex items-center justify-center overflow-hidden relative">
                     {livePreviewCourse ? (
-                      <img src={formCourse.cover} className="h-full w-full object-cover" alt="preview" />
+                      <Image
+                        src={formCourse.cover}
+                        alt="preview"
+                        fill
+                        unoptimized
+                        className="object-cover"
+                      />
                     ) : (
                       <div className="text-gray-400 text-sm flex items-center gap-2">
                         <Images size={18} /> Enter URL or upload
@@ -1475,13 +1748,22 @@ export default function PathsAdmin() {
                   <div className="text-sm font-medium mb-2">Card Preview</div>
                   <div className="rounded-xl border bg-white p-4 shadow-sm">
                     <div className="flex items-center gap-3">
-                      <img
-                        src={livePreviewCourse ? formCourse.cover : "/assets/images/thumbnails/ai.png"}
-                        className="h-14 w-24 rounded-md object-cover border"
+                      <Image
+                        src={
+                          livePreviewCourse
+                            ? formCourse.cover
+                            : "/assets/images/thumbnails/ai.png"
+                        }
                         alt=""
+                        width={96}
+                        height={56}
+                        unoptimized
+                        className="h-14 w-24 rounded-md object-cover border"
                       />
                       <div className="min-w-0">
-                        <div className="font-semibold truncate">{formCourse.title || "Untitled course"}</div>
+                        <div className="font-semibold truncate">
+                          {formCourse.title || "Untitled course"}
+                        </div>
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-600">
                           <span className="inline-flex items-center gap-1">
                             <Clock size={14} /> {formCourse.duration || "—"}
@@ -1489,7 +1771,8 @@ export default function PathsAdmin() {
                           <Pill tone="orange">{formCourse.level}</Pill>
                           {!!formCourse.rating && (
                             <span className="inline-flex items-center gap-1">
-                              <Star size={14} className="text-yellow-500" /> {formCourse.rating}
+                              <Star size={14} className="text-yellow-500" />{" "}
+                              {formCourse.rating}
                             </span>
                           )}
                           {!!formCourse.students && (
@@ -1498,7 +1781,9 @@ export default function PathsAdmin() {
                             </span>
                           )}
                           {syllabusCourse?.length ? (
-                            <Pill tone="green">{syllabusCourse.length} sections</Pill>
+                            <Pill tone="green">
+                              {syllabusCourse.length} sections
+                            </Pill>
                           ) : null}
                         </div>
 
@@ -1542,7 +1827,11 @@ export default function PathsAdmin() {
                 disabled={creating}
                 className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60"
               >
-                {creating ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
+                {creating ? (
+                  <Loader2 className="animate-spin" size={16} />
+                ) : (
+                  <Plus size={16} />
+                )}
                 Create
               </button>
             </div>
@@ -1551,11 +1840,16 @@ export default function PathsAdmin() {
       </Modal>
 
       {/* Delete Confirm */}
-      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Confirm Deletion">
+      <Modal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title="Confirm Deletion"
+      >
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
             Are you sure you want to delete{" "}
-            <span className="font-semibold">{deleteTarget?.name}</span>? This action cannot be undone.
+            <span className="font-semibold">{deleteTarget?.name}</span>? This
+            action cannot be undone.
           </p>
         </div>
         <div className="mt-4 flex items-center justify-end gap-3">
@@ -1590,7 +1884,7 @@ function Modal({
   open: boolean;
   onClose: () => void;
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
   wide?: boolean;
 }) {
   return (

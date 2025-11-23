@@ -1,13 +1,17 @@
 // app/api/student/me/route.ts
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 
 import { dbConnect } from "@/lib/db";
 import User from "@/models/User";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserDoc } from "@/models/User";
 
-export async function GET(_req: NextRequest) {
+// Extend UserDoc with a legacy emailVerified field if it existed before
+type UserDocWithLegacy = UserDoc & {
+  emailVerified?: boolean;
+};
+
+export async function GET() {
   try {
     // current user from server helper (returns { id, name, email, urn? } | null)
     const current = await getCurrentUser(null);
@@ -18,7 +22,11 @@ export async function GET(_req: NextRequest) {
     // If getCurrentUser already includes urn/name, return immediately
     if (current.urn !== undefined) {
       return NextResponse.json(
-        { name: current.name ?? null, urn: current.urn ?? null, email: current.email ?? null },
+        {
+          name: current.name ?? null,
+          urn: current.urn ?? null,
+          email: current.email ?? null,
+        },
         { status: 200 }
       );
     }
@@ -26,16 +34,25 @@ export async function GET(_req: NextRequest) {
     // Otherwise fetch minimal fields from DB using findById (NOT find)
     await dbConnect();
 
-    // NOTE: use findById (single doc) and .lean<UserDoc | null>() so TypeScript knows
-    const user = await User.findById(current.id, { name: 1, urn: 1, meta: 1, email: 1 })
-      .lean<UserDoc | null>()
+    // NOTE: use findById (single doc) and .lean<UserDocWithLegacy | null>()
+    const user = await User.findById(current.id, {
+      name: 1,
+      urn: 1,
+      meta: 1,
+      email: 1,
+      // legacy field (if present in old data)
+      emailVerified: 1,
+    })
+      .lean<UserDocWithLegacy | null>()
       .exec();
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const emailVerified = Boolean(user?.meta?.emailVerification?.verified || (user as any).emailVerified);
+    const emailVerified = Boolean(
+      user.meta?.emailVerification?.verified ?? user.emailVerified
+    );
 
     return NextResponse.json(
       {

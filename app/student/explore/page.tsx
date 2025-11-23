@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { BookOpen, BookmarkPlus, Check, Clock, Filter, GraduationCap, Layers, Loader2, Search, Star, Tag } from "lucide-react";
+import { BookOpen, Check, Clock, Filter, GraduationCap, Layers, Loader2, Search, Star, Tag } from "lucide-react";
 
 type CatCourse = {
   id: string; title: string; description: string; level: string; durationHours: number; rating: number; students: number; category: string; tags?: string[]; thumbnail?: string; isNew?: boolean;

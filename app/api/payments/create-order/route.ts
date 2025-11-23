@@ -18,7 +18,7 @@ type EnrollmentLean = {
   status?: string;
   amount?: number;
   currency?: string;
-  meta?: Record<string, any>;
+  meta?: Record<string, unknown>;
 };
 
 function shortId(id: unknown, len = 8) {
@@ -39,6 +39,25 @@ type RazorpayOrderResponse = {
   amount: number | string; // Razorpay returns number|string
   currency: string;
 };
+
+// Helper type guards for Razorpay error shapes
+type RazorpayInnerError = {
+  description?: unknown;
+  [key: string]: unknown;
+};
+
+type RazorpayErrorWrapper = {
+  error?: unknown;
+  [key: string]: unknown;
+};
+
+function isRazorpayErrorWrapper(val: unknown): val is RazorpayErrorWrapper {
+  return typeof val === "object" && val !== null && "error" in val;
+}
+
+function isRazorpayInnerError(val: unknown): val is RazorpayInnerError {
+  return typeof val === "object" && val !== null && "description" in val;
+}
 
 export async function POST(req: Request) {
   try {
@@ -120,20 +139,27 @@ export async function POST(req: Request) {
       paymentDoc.razorpayOrderId = undefined;
       await paymentDoc.save();
 
-      const rpError =
-        typeof rpErr === "object" && rpErr !== null && "error" in rpErr
-          ? (rpErr as any).error
-          : rpErr;
+      // unwrap Razorpay error if present
+      const rpError = isRazorpayErrorWrapper(rpErr) ? rpErr.error : rpErr;
 
       console.error("create order razorpay error", rpErr);
+
+      const details =
+        isRazorpayInnerError(rpError) &&
+        typeof rpError.description === "string"
+          ? rpError.description
+          : (() => {
+              try {
+                return JSON.stringify(rpError);
+              } catch {
+                return String(rpError);
+              }
+            })();
 
       return NextResponse.json(
         {
           error: "Razorpay order creation failed",
-          details:
-            typeof rpError === "object" && rpError !== null
-              ? (rpError as any).description || JSON.stringify(rpError)
-              : String(rpError),
+          details,
         },
         { status: 400 }
       );

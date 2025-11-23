@@ -1,10 +1,40 @@
 // app/api/student/profile/route.ts
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
-import User from "@/models/User"; // or "@/models/Profile" if that's the filename
+import User from "@/models/User";
 import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+
+interface ProfileBody {
+  email?: string;
+  fullName?: string;
+  phone?: string;
+  city?: string;
+  branch?: string;
+  graduationYear?: string | number;
+  portfolio?: string;
+  bio?: string;
+  gender?: string;
+  skills?: unknown;
+  avatarDataUrl?: string;
+}
+
+type UpdatableProfileFields = {
+  email: string;
+  fullName: string;
+  phone: string;
+  city: string;
+  branch: string;
+  graduationYear: string;
+  portfolio: string;
+  bio: string;
+  gender: string;
+  skills: string[];
+  role: "student";
+  updatedAt: Date;
+  avatarDataUrl?: string;
+};
 
 // GET current student's profile
 export async function GET(req: Request) {
@@ -28,10 +58,12 @@ export async function GET(req: Request) {
     const user = await User.findOne({ email }).lean().select("-__v -_id");
 
     return NextResponse.json({ ok: true, data: user ?? null });
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const message =
+      e instanceof Error ? e.message : "Server error";
     console.error("GET /api/student/profile", e);
     return NextResponse.json(
-      { error: e?.message || "Server error" },
+      { error: message },
       { status: 500 }
     );
   }
@@ -40,20 +72,21 @@ export async function GET(req: Request) {
 // POST upsert current student's profile
 export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => null);
-    if (!body || typeof body !== "object") {
+    const raw = await req.json().catch(() => null);
+
+    if (!raw || typeof raw !== "object") {
       return NextResponse.json(
         { error: "Invalid JSON body" },
         { status: 400 }
       );
     }
 
+    const body = raw as ProfileBody;
+
     const me = await getCurrentUser(req).catch(() => null);
 
     const emailFromBody =
-      typeof (body as any).email === "string"
-        ? (body as any).email.trim()
-        : "";
+      typeof body.email === "string" ? body.email.trim() : "";
 
     // Prefer session email, fall back to body.email
     const email = me?.email || emailFromBody;
@@ -76,30 +109,35 @@ export async function POST(req: Request) {
       gender,
       skills,
       avatarDataUrl,
-    } = body as Record<string, any>;
+    } = body;
 
-    const updateDoc: Record<string, any> = {
+    const normalizedSkills: string[] = Array.isArray(skills)
+      ? skills
+          .filter((s): s is string => typeof s === "string")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+
+    const updateDoc: UpdatableProfileFields = {
       email,
-      fullName: String(fullName || "").trim(),
-      phone: String(phone || "").trim(),
-      city: String(city || "").trim(),
-      branch: String(branch || "").trim(),
-      graduationYear: String(graduationYear || "").trim(),
-      portfolio: String(portfolio || "").trim(),
-      bio: String(bio || "").trim(),
-      gender: gender || "",
-      skills: Array.isArray(skills)
-        ? skills
-            .filter((s) => typeof s === "string")
-            .map((s: string) => s.trim())
-            .filter(Boolean)
-        : [],
+      fullName: String(fullName ?? "").trim(),
+      phone: String(phone ?? "").trim(),
+      city: String(city ?? "").trim(),
+      branch: String(branch ?? "").trim(),
+      graduationYear: String(graduationYear ?? "").trim(),
+      portfolio: String(portfolio ?? "").trim(),
+      bio: String(bio ?? "").trim(),
+      gender: gender ?? "",
+      skills: normalizedSkills,
       role: "student",
       updatedAt: new Date(),
     };
 
     // Only store avatar if it's a proper data URL
-    if (typeof avatarDataUrl === "string" && avatarDataUrl.startsWith("data:")) {
+    if (
+      typeof avatarDataUrl === "string" &&
+      avatarDataUrl.startsWith("data:")
+    ) {
       updateDoc.avatarDataUrl = avatarDataUrl;
     }
 
@@ -115,10 +153,12 @@ export async function POST(req: Request) {
     );
 
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const message =
+      e instanceof Error ? e.message : "Server error";
     console.error("POST /api/student/profile", e);
     return NextResponse.json(
-      { error: e?.message || "Server error" },
+      { error: message },
       { status: 500 }
     );
   }

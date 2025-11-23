@@ -1,6 +1,7 @@
+// app/api/users/count/route.ts
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
-import User, { UserDoc } from "@/models/User";
+import User from "@/models/User";
 
 export const runtime = "nodejs";
 
@@ -9,8 +10,9 @@ export async function GET() {
     await dbConnect();
     const count = await User.countDocuments();
     return NextResponse.json({ count });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Users count error:", err);
-    return NextResponse.json({ error: "Failed to fetch users count" }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Failed to fetch users count";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

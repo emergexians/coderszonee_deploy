@@ -34,15 +34,25 @@ export async function POST(req: Request) {
       meta: body.meta ?? {},
     });
     return NextResponse.json({ data: created }, { status: 201 });
-  } catch (e: any) {
-    if (e?.code === 11000) {
+  } catch (err: unknown) {
+    // Mongo duplicate key error (code 11000)
+    const isDuplicateKeyError =
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code?: number }).code === 11000;
+
+    if (isDuplicateKeyError) {
       return NextResponse.json(
         { error: "Already enrolled for this course with this email." },
         { status: 409 }
       );
     }
+
+    const message = err instanceof Error ? err.message : String(err);
+
     return NextResponse.json(
-      { error: "Failed to create enrollment", detail: e?.message || String(e) },
+      { error: "Failed to create enrollment", detail: message },
       { status: 500 }
     );
   }
