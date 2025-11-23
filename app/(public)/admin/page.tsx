@@ -10,6 +10,13 @@ import {
   RefreshCcw,
   Sparkles,
 } from "lucide-react";
+import type { ElementType } from "react";
+
+import { dbConnect } from "@/lib/db";
+import User from "@/models/User";
+import { Course } from "@/models/courses/Course";
+import { SkillPath } from "@/models/courses/SkillPath";
+import { CareerPath } from "@/models/courses/CareerPath";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,67 +31,42 @@ type AnyDoc = {
   createdAt?: string;
 };
 
-async function safeJson<T = any>(res: Response, fallback: T): Promise<T> {
+async function safeJson<T>(res: Response, fallback: T): Promise<T> {
   try {
-    const ct = (res.headers.get("content-type") || "").toLowerCase();
-    if (!ct.includes("application/json")) return fallback;
+    const ct = res.headers.get("content-type") || "";
+    if (!ct.toLowerCase().includes("application/json")) return fallback;
+    // We trust the server to send T-shaped JSON here
     return (await res.json()) as T;
   } catch {
     return fallback;
   }
 }
 
-function extractCount(payload: any): number | null {
-  if (payload == null) return null;
-  // Accepted shapes:
-  // 1) { count: number }
-  if (typeof payload.count === "number") return payload.count;
-  // 2) number
-  if (typeof payload === "number") return payload;
-  // 3) { data: { count: number } }
-  if (payload?.data && typeof payload.data.count === "number") return payload.data.count;
-  // 4) { total: number }
-  if (typeof payload.total === "number") return payload.total;
-  // 5) { items: [...] }
-  if (Array.isArray(payload.items)) return payload.items.length;
-  // 6) array
-  if (Array.isArray(payload)) return payload.length;
-  return null;
-}
-
 async function getList(url: string): Promise<AnyDoc[]> {
   try {
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return [];
-    const json = await safeJson<any>(res, []);
-    if (Array.isArray(json)) return json as AnyDoc[];
-    const arr = json?.data ?? json?.items;
-    return Array.isArray(arr) ? (arr as AnyDoc[]) : [];
+
+    const json = await safeJson<unknown>(res, null);
+
+    let data: unknown;
+
+    if (Array.isArray(json)) {
+      data = json;
+    } else if (json && typeof json === "object") {
+      const obj = json as { data?: unknown; items?: unknown };
+      data = obj.data ?? obj.items;
+    } else {
+      data = [];
+    }
+
+    return Array.isArray(data) ? (data as AnyDoc[]) : [];
   } catch {
     return [];
   }
 }
 
-/** Prefer `/count` but accept many shapes and gracefully fallback to a list length */
-async function getCount(primaryUrl: string, fallbackListUrl: string, listFallbackValue?: number) {
-  try {
-    const res = await fetch(primaryUrl, { cache: "no-store" });
-    if (res.ok) {
-      const json = await safeJson<any>(res, null);
-      const c = extractCount(json);
-      if (typeof c === "number" && c >= 0) return c;
-    }
-  } catch {
-    /* ignore */
-  }
-  // If we already have the list length, use it first
-  if (typeof listFallbackValue === "number") return listFallbackValue;
-  // Otherwise, fetch the list and count
-  const items = await getList(fallbackListUrl);
-  return items.length || 0;
-}
-
-function recent(items: AnyDoc[], n = 5) {
+function recent(items: AnyDoc[], n = 5): AnyDoc[] {
   return items
     .slice()
     .sort((a, b) => {
@@ -103,7 +85,7 @@ function StatCard({
 }: {
   label: string;
   value: number | string;
-  icon: React.ElementType;
+  icon: ElementType;
   href: string;
 }) {
   const Icon = icon;
@@ -156,38 +138,38 @@ function Row({
 }
 
 export default async function AdminDashboard() {
-  // Load base lists for "Recent" sections (and as count fallbacks)
-  const [users, courses, skillPaths, careerPaths] = await Promise.all([
-    getList("/api/users"),
+  // 1) Connect once
+  try {
+    await dbConnect();
+  } catch {
+    // If DB connect fails, keep UI up with zeros
+  }
+
+  // 2) Direct, reliable counts from Mongo (no API hop)
+  const [usersCount, coursesCount, skillCount, careerCount] = await Promise.all([
+    User.countDocuments().catch(() => 0),
+    Course.countDocuments().catch(() => 0),
+    SkillPath.countDocuments().catch(() => 0),
+    CareerPath.countDocuments().catch(() => 0),
+  ]);
+
+  // 3) Recent panels still use your JSON endpoints
+  const [courses, skillPaths, careerPaths] = await Promise.all([
     getList("/api/courses"),
     getList("/api/skillpaths"),
     getList("/api/careerpaths"),
   ]);
 
-  const [usersCount, coursesCount, skillCount, careerCount] = await Promise.all([
-    getCount("/api/users/count", "/api/users", users.length).catch((e: any) => {
-      console.error("User count error:", e);
-      return 0;
-    }),
-    getCount("/api/courses/count", "/api/courses", courses.length).catch((e: any) => {
-      console.error("Course count error:", e);
-      return 0;
-    }),
-    getCount("/api/skillpaths/count", "/api/skillpaths", skillPaths.length).catch((e: any) => {
-      console.error("SkillPath count error:", e);
-      return 0;
-    }),
-    getCount("/api/careerpaths/count", "/api/careerpaths", careerPaths.length).catch((e: any) => {
-      console.error("CareerPath count error:", e);
-      return 0;
-    }),
-  ]);
-
-  console.log({ usersCount, coursesCount, skillCount, careerCount });
   const recentCourses = recent(courses, 5);
-  const recentPaths = recent([...skillPaths, ...careerPaths], 5); 
+  const recentPaths = recent(
+    [...skillPaths, ...careerPaths].map((p) => ({
+      ...p,
+      title: p.name,
+    })),
+    5,
+  );
 
-  // Optional system status
+  // 4) Optional system status
   let healthOk = false;
   try {
     const res = await fetch("/api/health", { cache: "no-store" });
@@ -252,7 +234,9 @@ export default async function AdminDashboard() {
         </div>
         <div className="flex items-center gap-3">
           <div className={`rounded-xl p-3 ${healthOk ? "bg-green-100" : "bg-gray-100"}`}>
-            <ShieldCheck className={`h-6 w-6 ${healthOk ? "text-green-700" : "text-gray-700"}`} />
+            <ShieldCheck
+              className={`h-6 w-6 ${healthOk ? "text-green-700" : "text-gray-700"}`}
+            />
           </div>
           <RefreshCcw className="h-5 w-5 text-gray-400" />
         </div>
@@ -265,7 +249,11 @@ export default async function AdminDashboard() {
           {[
             { href: "/admin/users", title: "Users", desc: "View and manage users" },
             { href: "/admin/paths", title: "Courses/Skill/Career", desc: "Create and manage" },
-            { href: "/admin/contacts", title: "Contacts", desc: "View messages from contact page" },
+            {
+              href: "/admin/contacts",
+              title: "Contacts",
+              desc: "View messages from contact page",
+            },
           ].map((c) => (
             <Link
               key={c.href}
@@ -292,7 +280,7 @@ export default async function AdminDashboard() {
             {recentCourses.length ? (
               recentCourses.map((c) => (
                 <Row
-                  key={c._id || c.href || Math.random()}
+                  key={c._id || c.href || Math.random().toString(36)}
                   title={c.title || "Untitled course"}
                   meta={[c.category, c.subCategory].filter(Boolean).join(" · ")}
                   href={typeof c.href === "string" ? c.href : undefined}
@@ -315,7 +303,7 @@ export default async function AdminDashboard() {
             {recentPaths.length ? (
               recentPaths.map((p) => (
                 <Row
-                  key={p._id || p.href || Math.random()}
+                  key={p._id || p.href || Math.random().toString(36)}
                   title={p.title || p.name || "Untitled path"}
                   meta={p.href || ""}
                   href={typeof p.href === "string" ? p.href : undefined}
@@ -333,12 +321,12 @@ export default async function AdminDashboard() {
         <h3 className="font-semibold">Tips</h3>
         <ul className="mt-3 list-disc pl-5 text-sm text-gray-600 space-y-1">
           <li>
-            Use <span className="font-medium">/admin/paths</span> to add Skill Paths, Career Paths, or Courses
-            (includes upload & syllabus builder).
+            Use <span className="font-medium">/admin/paths</span> to add Skill Paths, Career Paths, or
+            Courses (includes upload & syllabus builder).
           </li>
           <li>
-            Put images under <code className="bg-gray-50 px-1 rounded">/public</code> or upload via the built-in uploader
-            for safe, optimized rendering.
+            Put images under <code className="bg-gray-50 px-1 rounded">/public</code> or upload via the
+            built-in uploader for safe, optimized rendering.
           </li>
           <li>Keep categories consistent for better discovery and filtering.</li>
         </ul>

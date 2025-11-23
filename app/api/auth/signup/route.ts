@@ -8,15 +8,54 @@ import { randomBytes } from "crypto";
 import { dbConnect } from "@/lib/db";
 import User from "@/models/User";
 
-// config: use env vars
+// ---- Types ----
+type SignupRole = "student" | "instructor" | "admin" | string;
+
+interface SignupBody {
+  name?: string;
+  email?: string;
+  phone?: string;
+  password?: string;
+  role?: SignupRole;
+}
+
+interface NewUserPayload {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  role: SignupRole;
+  urn: string;
+}
+
+interface DuplicateKeyError {
+  code?: number;
+  keyPattern?: { urn?: unknown };
+}
+
+interface SavedUserShape {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  urn: string;
+  createdAt?: Date;
+  phone?: string;
+}
+
+// ---- SMTP config ----
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = Number(process.env.SMTP_PORT || 465);
 const SMTP_USER = process.env.SMTP_USER;
 const SMTP_PASS = process.env.SMTP_PASS;
-const FROM_EMAIL = process.env.FROM_EMAIL || `no-reply@${process.env.NEXT_PUBLIC_SITE_DOMAIN || "Coderszonee.com"}`;
+const FROM_EMAIL =
+  process.env.FROM_EMAIL ||
+  `no-reply@${process.env.NEXT_PUBLIC_SITE_DOMAIN || "Coderszonee.com"}`;
 
 if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-  console.warn("SMTP not fully configured. Emails will fail until SMTP_HOST/USER/PASS are set.");
+  console.warn(
+    "SMTP not fully configured. Emails will fail until SMTP_HOST/USER/PASS are set.",
+  );
 }
 
 /** Generate 5 uppercase alphanumeric chars */
@@ -32,23 +71,36 @@ function make5Alnum(): string {
 }
 
 /** Build URN for role — ensure only STD or INS prefixes so it matches your schema */
-function buildURN(role: string): string {
+function buildURN(role: SignupRole): string {
   const year = new Date().getFullYear();
-  // Map anything non-student explicitly to INS so schema validation (STD|INS) passes
   const prefix = role === "student" ? "STD" : "INS";
   return `${prefix}/${year}/${make5Alnum()}`;
 }
 
 /** Generate unique URN with retries */
-async function generateUniqueURN(role: string, attempts = 6): Promise<string> {
+async function generateUniqueURN(
+  role: SignupRole,
+  attempts = 6,
+): Promise<string> {
   for (let i = 0; i < attempts; i++) {
     const urn = buildURN(role);
     const existing = await User.findOne({ urn }).lean().exec();
     if (!existing) return urn;
   }
-  // fallback: append timestamp slice to ensure uniqueness (still using STD/INS)
   const fallbackPrefix = role === "student" ? "STD" : "INS";
-  return `${fallbackPrefix}/${new Date().getFullYear()}/${make5Alnum()}${Date.now().toString().slice(-4)}`;
+  return `${fallbackPrefix}/${new Date().getFullYear()}/${make5Alnum()}${Date.now()
+    .toString()
+    .slice(-4)}`;
+}
+
+/** small helper to avoid sending unescaped HTML injection in name */
+function escapeHtml(str: string) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 /** Send URN email via nodemailer (if SMTP configured) */
@@ -71,7 +123,9 @@ async function sendUrnEmail(name: string, email: string, urn: string) {
   const html = `
     <div style="font-family:system-ui, -apple-system, Roboto, 'Segoe UI', 'Helvetica Neue', Arial; color:#111;">
       <p>Hi ${escapeHtml(name)},</p>
-      <p>Welcome to ${process.env.NEXT_PUBLIC_SITE_NAME || "our platform"} — your unique registration number (URN) is:</p>
+      <p>Welcome to ${
+        process.env.NEXT_PUBLIC_SITE_NAME || "our platform"
+      } — your unique registration number (URN) is:</p>
       <h2 style="letter-spacing:0.04em; margin:0.5rem 0; font-family:monospace;">${urn}</h2>
       <p>Keep this safe — you'll need it for identification on the platform.</p>
       <p>Cheers,<br/>${process.env.NEXT_PUBLIC_SITE_NAME || "Team"}</p>
@@ -86,29 +140,30 @@ async function sendUrnEmail(name: string, email: string, urn: string) {
   });
 }
 
-/** small helper to avoid sending unescaped HTML injection in name */
-function escapeHtml(str: string) {
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => null);
-    if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    const bodyRaw = await req.json().catch(() => null);
+    if (!bodyRaw) {
+      return NextResponse.json(
+        { error: "Invalid JSON" },
+        { status: 400 },
+      );
+    }
+
+    const body = bodyRaw as SignupBody;
 
     // whitelist expected fields — do not trust incoming body shape
-    const name = String(body.name || "").trim();
-    const email = String(body.email || "").toLowerCase().trim();
-    const password = String(body.password || "");
-    const role = String(body.role || "student");
+    const name = String(body.name ?? "").trim();
+    const email = String(body.email ?? "").toLowerCase().trim();
+    const phone = String(body.phone ?? "").trim();
+    const password = String(body.password ?? "");
+    const role: SignupRole = String(body.role ?? "student");
 
-    if (!name || !email || !password) {
-      return NextResponse.json({ error: "name, email and password are required" }, { status: 400 });
+    if (!name || !email || !password || !phone) {
+      return NextResponse.json(
+        { error: "name, email, phone and password are required" },
+        { status: 400 },
+      );
     }
 
     await dbConnect();
@@ -116,7 +171,10 @@ export async function POST(req: NextRequest) {
     // basic email uniqueness check
     const existing = await User.findOne({ email }).exec();
     if (existing) {
-      return NextResponse.json({ error: "Email already registered" }, { status: 409 });
+      return NextResponse.json(
+        { error: "Email already registered" },
+        { status: 409 },
+      );
     }
 
     // generate unique URN and ensure no collision
@@ -126,58 +184,72 @@ export async function POST(req: NextRequest) {
     const salt = await bcrypt.genSalt(10);
     const hashed = await bcrypt.hash(password, salt);
 
-    // Build safe payload (explicit fields only) — do NOT pass raw body
-    const payload: any = {
+    const payload: NewUserPayload = {
       name,
       email,
+      phone,
       password: hashed,
       role,
       urn,
     };
 
     // Attempt to save with a small retry loop to handle rare duplicate-key race on urn
-    let savedUser: any = null;
+    let savedUser: unknown = null;
     for (let attempt = 0; attempt < 4; attempt++) {
       try {
         const newUser = new User(payload);
+        // mongoose doc type is broader; keep as unknown here
         savedUser = await newUser.save();
         break;
-      } catch (e: any) {
-        // Duplicate key error on urn — regenerate and retry
-        if (e?.code === 11000 && e?.keyPattern && e.keyPattern.urn) {
+      } catch (e) {
+        const err = e as DuplicateKeyError;
+        if (
+          err.code === 11000 &&
+          err.keyPattern &&
+          err.keyPattern.urn
+        ) {
           urn = await generateUniqueURN(role, 8);
           payload.urn = urn;
           continue;
         }
-        // Other errors: rethrow
         throw e;
       }
     }
 
     if (!savedUser) {
-      return NextResponse.json({ error: "Could not create user (urn collision)" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Could not create user (urn collision)" },
+        { status: 500 },
+      );
     }
+
+    const u = savedUser as SavedUserShape;
 
     // try to send email (non-blocking)
     try {
-      await sendUrnEmail(savedUser.name, savedUser.email, payload.urn);
+      await sendUrnEmail(u.name, u.email, u.urn);
     } catch (emailErr) {
       console.error("Failed to send URN email:", emailErr);
     }
 
     // prepare return user object (omit password)
     const userResponse = {
-      id: savedUser._id,
-      name: savedUser.name,
-      email: savedUser.email,
-      role: savedUser.role,
-      urn: savedUser.urn,
-      createdAt: savedUser.createdAt,
+      id: u._id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      urn: u.urn,
+      createdAt: u.createdAt,
+      phone: u.phone,
     };
 
     return NextResponse.json({ user: userResponse }, { status: 201 });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Signup error:", err);
-    return NextResponse.json({ error: err.message || "Server error" }, { status: 500 });
+    const message =
+      err instanceof Error && err.message
+        ? err.message
+        : "Server error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

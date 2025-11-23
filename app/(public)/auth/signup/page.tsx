@@ -1,7 +1,7 @@
 // app/auth/signup/page.tsx
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
+import { useState, type KeyboardEvent, type ElementType } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -11,7 +11,6 @@ import {
   User,
   Eye,
   EyeOff,
-  Github,
   ChevronRight,
   ShieldCheck,
   ChevronLeft,
@@ -19,6 +18,7 @@ import {
   Shield,
   GraduationCap,
   UserCog,
+  Phone,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -30,6 +30,7 @@ export default function SignUpPage() {
   const [form, setForm] = useState({
     name: "",
     email: "",
+    phone: "",
     password: "",
     confirm: "",
   });
@@ -60,9 +61,9 @@ export default function SignUpPage() {
   const getDashboardPath = (r: Role) => {
     switch (r) {
       case "admin":
-        return "/admin"; // or /admin/dashboard if you add it
+        return "/admin";
       case "instructor":
-        return "/instructor/dashboard";   // change when you build instructor area
+        return "/instructor/dashboard";
       case "student":
       default:
         return "/student/dashboard";
@@ -73,7 +74,10 @@ export default function SignUpPage() {
     e.preventDefault();
     setErr(null);
 
-    if (!agree) return setErr("Please agree to the Terms & Privacy.");
+    if (!agree) {
+      setErr("Please agree to the Terms & Privacy.");
+      return;
+    }
     if (form.password.length < 8) {
       setErr("Password must be at least 8 characters.");
       return;
@@ -91,26 +95,43 @@ export default function SignUpPage() {
         body: JSON.stringify({
           name: form.name,
           email: form.email,
+          phone: form.phone,
           password: form.password,
           role,
         }),
       });
 
-      // Try JSON either way (error or success)
-      const data = await res.json().catch(() => null as any);
+      let data: unknown = null;
+      try {
+        data = await res.json();
+      } catch {
+        // non-JSON response, ignore
+      }
 
       if (!res.ok) {
-        const msg = data?.error || data?.message || "Sign up failed";
+        let msg = "Sign up failed";
+        if (data && typeof data === "object") {
+          const d = data as { error?: unknown; message?: unknown };
+          if (typeof d.error === "string") msg = d.error;
+          else if (typeof d.message === "string") msg = d.message;
+        }
         throw new Error(msg);
       }
 
-      // Prefer role returned by API (authoritative), fall back to selected role
-      const apiRole: Role =
-        (data?.user?.role as Role | undefined) || role || "student";
+      // Prefer role returned by API (authoritative)
+      let apiRole: Role = role;
+      if (data && typeof data === "object") {
+        const d = data as { user?: { role?: unknown } };
+        const r = d.user?.role;
+        if (r === "admin" || r === "student" || r === "instructor") {
+          apiRole = r;
+        }
+      }
 
       router.push(getDashboardPath(apiRole));
-    } catch (e: any) {
-      setErr(e.message || "Sign up failed");
+    } catch (e: unknown) {
+      if (e instanceof Error) setErr(e.message || "Sign up failed");
+      else setErr("Sign up failed");
     } finally {
       setSubmitting(false);
     }
@@ -123,7 +144,7 @@ export default function SignUpPage() {
   return (
     <div className="min-h-screen w-full bg-white text-black flex items-center justify-center p-4">
       <div className="w-full max-w-6xl grid md:grid-cols-2 rounded-3xl overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.12)] border border-black/10">
-        {/* LEFT: Form (developer-focused) */}
+        {/* LEFT: Form */}
         <div className="bg-white p-6 sm:p-10">
           <div className="mb-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-black/10 px-3 py-1 text-xs text-black/70">
@@ -139,7 +160,9 @@ export default function SignUpPage() {
 
           {/* Role Selector */}
           <fieldset className="mb-5">
-            <legend className="block text-sm font-medium mb-2">Choose your role</legend>
+            <legend className="block text-sm font-medium mb-2">
+              Choose your role
+            </legend>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <RoleCard
                 role="student"
@@ -174,7 +197,9 @@ export default function SignUpPage() {
           <form onSubmit={onSubmit} className="space-y-4">
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium mb-1">Full name</label>
+              <label className="block text-sm font-medium mb-1">
+                Full name
+              </label>
               <div className="relative">
                 <User className="absolute left-3 top-2.5 h-5 w-5 text-black/40" />
                 <input
@@ -205,11 +230,34 @@ export default function SignUpPage() {
               </div>
             </div>
 
+            {/* Phone */}
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Phone number
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-2.5 h-5 w-5 text-black/40" />
+                <input
+                  type="tel"
+                  className="w-full rounded-xl border border-black/15 bg-white py-2.5 pl-10 pr-3 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                  value={form.phone}
+                  onChange={(e) => setField("phone", e.target.value)}
+                  required
+                  autoComplete="tel"
+                  placeholder="+91 98765 43210"
+                />
+              </div>
+            </div>
+
             {/* Password */}
             <div>
               <div className="flex items-center justify-between">
-                <label className="block text-sm font-medium mb-1">Password</label>
-                <span className="text-[11px] text-black/50">Use 8+ chars with a mix of symbols</span>
+                <label className="block text-sm font-medium mb-1">
+                  Password
+                </label>
+                <span className="text-[11px] text-black/50">
+                  Use 8+ chars with a mix of symbols
+                </span>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-2.5 h-5 w-5 text-black/40" />
@@ -248,12 +296,18 @@ export default function SignUpPage() {
                   aria-hidden
                 />
               </div>
-              {capsLock && <p className="mt-2 text-xs text-orange-600">Caps Lock is ON</p>}
+              {capsLock && (
+                <p className="mt-2 text-xs text-orange-600">
+                  Caps Lock is ON
+                </p>
+              )}
             </div>
 
             {/* Confirm */}
             <div>
-              <label className="block text-sm font-medium mb-1">Confirm password</label>
+              <label className="block text-sm font-medium mb-1">
+                Confirm password
+              </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-2.5 h-5 w-5 text-black/40" />
                 <input
@@ -285,11 +339,17 @@ export default function SignUpPage() {
                 className="h-4 w-4 rounded border-black/30 text-orange-600 focus:ring-orange-500"
               />
               I agree to the{" "}
-              <Link className="text-orange-600 hover:text-orange-700" href="/legal/terms">
+              <Link
+                className="text-orange-600 hover:text-orange-700"
+                href="/legal/terms"
+              >
                 Terms
               </Link>{" "}
               &{" "}
-              <Link className="text-orange-600 hover:text-orange-700" href="/legal/privacy">
+              <Link
+                className="text-orange-600 hover:text-orange-700"
+                href="/legal/privacy"
+              >
                 Privacy
               </Link>
               .
@@ -308,49 +368,28 @@ export default function SignUpPage() {
               disabled={submitting}
               className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-black/90 disabled:opacity-60"
             >
-              {submitting ? <Loader2 className="animate-spin" size={18} /> : <Rocket size={18} />}
+              {submitting ? (
+                <Loader2 className="animate-spin" size={18} />
+              ) : (
+                <Rocket size={18} />
+              )}
               Create Account
             </button>
           </form>
 
-          {/* Divider */}
-          <div className="flex items-center gap-3 my-6">
-            <div className="h-px flex-1 bg-black/10" />
-            <span className="text-xs text-black/50">Or continue with</span>
-            <div className="h-px flex-1 bg-black/10" />
-          </div>
-
-          {/* Social (dev-first) */}
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="h-10 px-4 inline-flex items-center gap-2 rounded-full border border-black/15 hover:bg-black/5"
-              aria-label="Continue with GitHub"
-            >
-              <Github size={18} /> GitHub
-            </button>
-            <button
-              type="button"
-              className="h-10 px-4 inline-flex items-center gap-2 rounded-full border border-black/15 hover:bg-black/5"
-              aria-label="Continue with Google"
-            >
-              <span className="grid place-items-center h-4 w-4 rounded-full font-bold text-[11px] bg-orange-500 text-white">
-                G
-              </span>{" "}
-              Google
-            </button>
-          </div>
-
           {/* Sign in hint */}
           <p className="mt-6 text-sm text-black/70">
             Already have an account?{" "}
-            <Link href="/auth/signin" className="font-semibold text-orange-600 hover:text-orange-700">
+            <Link
+              href="/auth/signin"
+              className="font-semibold text-orange-600 hover:text-orange-700"
+            >
               Sign In
             </Link>
           </p>
         </div>
 
-        {/* RIGHT: Orange dev panel with animated "terminal" + chips */}
+        {/* RIGHT: Orange dev panel */}
         <div className="relative hidden md:flex flex-col justify-between p-10 bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 text-white">
           {/* Decorative glow/blobs */}
           <div className="pointer-events-none absolute inset-0 opacity-20">
@@ -373,11 +412,12 @@ export default function SignUpPage() {
               Build. Ship. Learn faster.
             </h2>
             <p className="mt-2 text-white/90 max-w-sm leading-relaxed">
-              Hands-on paths, real projects, courses and mentor reviews for modern stacks.
+              Hands-on paths, real projects, courses and mentor reviews for
+              modern stacks.
             </p>
           </div>
 
-          {/* Terminal Card (animated) */}
+          {/* Terminal Card */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -391,16 +431,32 @@ export default function SignUpPage() {
               <span className="ml-2 text-xs text-white/70">dev@coderszonee:~</span>
             </div>
             <div className="px-4 py-3 text-[12.5px] leading-6 font-mono">
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
                 <span className="text-orange-300">$</span> npm i @coderszonee/cli
               </motion.div>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }}>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.45 }}
+              >
                 <span className="text-green-300">✔</span> installed in 2.1s
               </motion.div>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.7 }}
+              >
                 <span className="text-orange-300">$</span> coderszonee init nextjs
               </motion.div>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.95 }}>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.95 }}
+              >
                 <span className="text-green-300">✔</span> project scaffolded — open{" "}
                 <span className="underline">/learn</span>
               </motion.div>
@@ -409,11 +465,16 @@ export default function SignUpPage() {
 
           {/* Tech chips + stats */}
           <div className="relative mt-6 flex flex-wrap items-center gap-2">
-            {["JavaScript", "TypeScript", "React", "Next.js", "Node", "SQL"].map((t) => (
-              <span key={t} className="text-xs px-3 py-1 rounded-full bg-white/15 ring-1 ring-white/25">
-                {t}
-              </span>
-            ))}
+            {["JavaScript", "TypeScript", "React", "Next.js", "Node", "SQL"].map(
+              (t) => (
+                <span
+                  key={t}
+                  className="text-xs px-3 py-1 rounded-full bg-white/15 ring-1 ring-white/25"
+                >
+                  {t}
+                </span>
+              ),
+            )}
           </div>
 
           <div className="relative mt-4 grid grid-cols-3 gap-4">
@@ -431,7 +492,7 @@ export default function SignUpPage() {
             </div>
           </div>
 
-          {/* CTA to sign in (alt path) */}
+          {/* CTA to sign in */}
           <div className="relative">
             <Link
               href="/auth/signin"
@@ -446,7 +507,7 @@ export default function SignUpPage() {
   );
 }
 
-/* ---------- Small role card component ---------- */
+/* ---------- Role card component ---------- */
 function RoleCard({
   role,
   title,
@@ -460,14 +521,18 @@ function RoleCard({
   desc: string;
   selected: boolean;
   onSelect: () => void;
-  Icon: React.ElementType<{ size?: number; className?: string }>;
+  Icon: ElementType<{ size?: number; className?: string }>;
 }) {
   return (
     <button
       type="button"
       onClick={onSelect}
       className={`text-left rounded-2xl border p-3 transition w-full
-        ${selected ? "border-orange-500 ring-2 ring-orange-200 bg-orange-50" : "border-black/15 hover:bg-black/5"}
+        ${
+          selected
+            ? "border-orange-500 ring-2 ring-orange-200 bg-orange-50"
+            : "border-black/15 hover:bg-black/5"
+        }
       `}
       aria-pressed={selected}
       aria-label={`Select ${title} role`}

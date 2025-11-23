@@ -20,6 +20,13 @@ const UserSchema = new Schema(
       required: true,
     },
 
+    // Phone number (optional but stored for contact)
+    phone: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
     role: { type: String, enum: USER_ROLES, default: "student", index: true },
 
     // Hide password by default when querying
@@ -27,14 +34,14 @@ const UserSchema = new Schema(
 
     meta: { type: Schema.Types.Mixed },
 
-    // URN must be unique and follow the format STD/YY/5ALNUM or INS/YY/5ALNUM
+    // URN must be unique and follow the format STD/YYYY/5ALNUM or INS/YYYY/5ALNUM
     urn: {
       type: String,
       required: true,
       unique: true,
       trim: true,
       uppercase: true,
-      match: [urnRegex, "URN must match STD/YY/5ALNUM or INS/YY/5ALNUM"],
+      match: [urnRegex, "URN must match STD/YYYY/5ALNUM or INS/YYYY/5ALNUM"],
     },
   },
   {
@@ -43,10 +50,19 @@ const UserSchema = new Schema(
     toJSON: {
       virtuals: true,
       versionKey: false,
-      transform: (_doc, ret: any) => {
-        ret.id = String(ret._id);
-        delete ret._id;
-        delete ret.password;
+      transform: (_doc, ret: Record<string, unknown>) => {
+        // Add `id` field as string
+        const _id = ret._id;
+        if (
+          typeof _id === "string" ||
+          _id instanceof mongoose.Types.ObjectId
+        ) {
+          (ret as { id?: string }).id = String(_id);
+        }
+
+        // Remove internal fields
+        delete (ret as { _id?: unknown })._id;
+        delete (ret as { password?: unknown }).password;
       },
     },
     toObject: { virtuals: true },
