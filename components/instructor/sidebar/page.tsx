@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 // components/admin/PathsAdmin.tsx
 "use client";
 
@@ -84,14 +85,55 @@ type ToastState =
   | { show: false }
   | { show: true; type: "success" | "error" | "info"; msg: string };
 
+interface PathFormState {
+  name: string;
+  href: string;
+  img: string;
+  desc: string;
+  duration: string;
+  skills: string;
+  rating: string;
+  students: string;
+  level: string;
+  perks: string;
+  syllabus: string;
+}
+
+interface CourseFormState {
+  title: string;
+  cover: string;
+  duration: string;
+  level: string;
+  href: string;
+  category: string;
+  subCategory: string;
+  rating: string;
+  students: string;
+  desc: string;
+  perks: string;
+  syllabus: string;
+}
+
 /* =========================
    Constants
 ========================= */
 const LEVELS = ["Beginner", "Intermediate", "Advanced"] as const;
 
 const CATEGORY_MAP: Record<string, string[]> = {
-  "Web Development": ["HTML & CSS", "JavaScript", "React / Next.js", "Node.js", "Full-Stack"],
-  "Data Science": ["Python", "Pandas", "Machine Learning", "Deep Learning", "Statistics"],
+  "Web Development": [
+    "HTML & CSS",
+    "JavaScript",
+    "React / Next.js",
+    "Node.js",
+    "Full-Stack",
+  ],
+  "Data Science": [
+    "Python",
+    "Pandas",
+    "Machine Learning",
+    "Deep Learning",
+    "Statistics",
+  ],
   "AI & ML": ["NLP", "Computer Vision", "Generative AI", "Reinforcement Learning"],
   Business: ["Marketing", "Finance", "Entrepreneurship", "Product Management"],
   Design: ["UI/UX", "Graphic Design", "Figma", "3D & Motion"],
@@ -158,11 +200,21 @@ function SkeletonRow() {
           <div className="h-3 w-40 rounded bg-gray-200" />
         </div>
       </td>
-      <td className="px-4 py-4"><div className="h-3 w-16 rounded bg-gray-200" /></td>
-      <td className="px-4 py-4"><div className="h-6 w-24 rounded-full bg-gray-200" /></td>
-      <td className="px-4 py-4"><div className="h-3 w-12 rounded bg-gray-200" /></td>
-      <td className="px-4 py-4"><div className="h-3 w-12 rounded bg-gray-200" /></td>
-      <td className="px-4 py-4"><div className="h-8 w-24 rounded bg-gray-200" /></td>
+      <td className="px-4 py-4">
+        <div className="h-3 w-16 rounded bg-gray-200" />
+      </td>
+      <td className="px-4 py-4">
+        <div className="h-6 w-24 rounded-full bg-gray-200" />
+      </td>
+      <td className="px-4 py-4">
+        <div className="h-3 w-12 rounded bg-gray-200" />
+      </td>
+      <td className="px-4 py-4">
+        <div className="h-3 w-12 rounded bg-gray-200" />
+      </td>
+      <td className="px-4 py-4">
+        <div className="h-8 w-24 rounded bg-gray-200" />
+      </td>
     </tr>
   );
 }
@@ -227,23 +279,29 @@ function Modal({
 ========================= */
 async function safeJson<T>(res: Response, fallback: T): Promise<T> {
   try {
-    if (!res) return fallback as T;
-    if (res.status === 204) return fallback as T;
+    if (!res) return fallback;
+    if (res.status === 204) return fallback;
     const ct = res.headers.get("content-type") || "";
-    if (!ct.toLowerCase().includes("application/json")) return fallback as T;
+    if (!ct.toLowerCase().includes("application/json")) return fallback;
     return (await res.json()) as T;
   } catch {
-    return fallback as T;
+    return fallback;
   }
 }
 
-async function getList<T = any>(url: string): Promise<T[]> {
+async function getList<T = unknown>(url: string): Promise<T[]> {
   try {
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return [];
-    const json = await safeJson<any>(res, {});
-    const items = Array.isArray(json) ? json : json?.data ?? json?.items;
-    return Array.isArray(items) ? items : [];
+    const json = await safeJson<unknown>(res, {});
+    let items: unknown = json;
+
+    if (!Array.isArray(items) && typeof items === "object" && items !== null) {
+      const obj = items as { data?: unknown; items?: unknown };
+      items = obj.data ?? obj.items ?? [];
+    }
+
+    return Array.isArray(items) ? (items as T[]) : [];
   } catch {
     return [];
   }
@@ -262,21 +320,29 @@ function parseCommaList(input: string): string[] {
 function parseSyllabusJSON(input: string): SyllabusSection[] | undefined {
   const trimmed = input.trim();
   if (!trimmed) return undefined;
+
   try {
-    const parsed = JSON.parse(trimmed);
+    const parsed = JSON.parse(trimmed) as unknown;
     if (!Array.isArray(parsed)) return undefined;
-    const clean = parsed
-      .map((sec) => {
-        if (!sec || typeof sec !== "object") return null;
-        const title = typeof sec.title === "string" ? sec.title.trim() : "";
-        if (!title) return null;
-        let items: string[] | undefined;
-        if (Array.isArray(sec.items)) {
-          items = sec.items.map((x: any) => String(x).trim()).filter(Boolean);
-        }
-        return { title, ...(items && { items }) } as SyllabusSection;
-      })
-      .filter(Boolean) as SyllabusSection[];
+
+    const clean: SyllabusSection[] = [];
+
+    for (const raw of parsed) {
+      if (!raw || typeof raw !== "object") continue;
+      const sec = raw as { title?: unknown; items?: unknown };
+
+      const title = typeof sec.title === "string" ? sec.title.trim() : "";
+      if (!title) continue;
+
+      let items: string[] | undefined;
+      if (Array.isArray(sec.items)) {
+        const mapped = sec.items.map((x) => String(x).trim()).filter(Boolean);
+        if (mapped.length) items = mapped;
+      }
+
+      clean.push({ title, ...(items ? { items } : {}) });
+    }
+
     return clean.length ? clean : undefined;
   } catch {
     return undefined;
@@ -288,12 +354,22 @@ function parseSyllabusJSON(input: string): SyllabusSection[] | undefined {
 ========================= */
 function tailSlugFromHref(href?: string) {
   if (!href) return "";
-  const parts = href.split("?")[0].split("#")[0].split("/").filter(Boolean);
+  const parts = href
+    .split("?")[0]
+    .split("#")[0]
+    .split("/")
+    .filter(Boolean);
   return parts[parts.length - 1] || "";
 }
-function buildCheckoutUrl(type: "skill" | "career" | "course", href?: string, slug?: string) {
+
+function buildCheckoutUrl(
+  type: "skill" | "career" | "course",
+  href?: string,
+  slug?: string
+) {
   const s = (slug || tailSlugFromHref(href)).trim();
-  const qType = type === "skill" ? "skillpath" : type === "career" ? "careerpath" : "course";
+  const qType =
+    type === "skill" ? "skillpath" : type === "career" ? "careerpath" : "course";
   return `/checkout?course=${qType}&slug=${encodeURIComponent(s)}`;
 }
 
@@ -328,7 +404,7 @@ export default function PathsAdmin() {
   } | null>(null);
 
   // Forms (paths share form; courses have their own)
-  const [formPath, setFormPath] = useState({
+  const [formPath, setFormPath] = useState<PathFormState>({
     name: "",
     href: "",
     img: "",
@@ -344,7 +420,8 @@ export default function PathsAdmin() {
 
   const defaultCategory = CATEGORY_LIST[0];
   const defaultSub = CATEGORY_MAP[defaultCategory][0];
-  const [formCourse, setFormCourse] = useState({
+
+  const [formCourse, setFormCourse] = useState<CourseFormState>({
     title: "",
     cover: "",
     duration: "",
@@ -364,6 +441,7 @@ export default function PathsAdmin() {
     () => CATEGORY_MAP[formCourse.category] ?? [],
     [formCourse.category]
   );
+
   useEffect(() => {
     if (!subOptions.includes(formCourse.subCategory)) {
       setFormCourse((f) => ({ ...f, subCategory: subOptions[0] || "" }));
@@ -398,19 +476,32 @@ export default function PathsAdmin() {
   }, []);
 
   const query = q.trim().toLowerCase();
+
   const filteredSkills = useMemo(() => {
     if (!query) return skills;
     return skills.filter((s) =>
-      [s.name, s.level, s.desc, s.skills?.join(","), s.perks?.join(","), s.syllabus?.map(sec => sec.title).join(",")]
-        .some((v) => v?.toLowerCase().includes(query))
+      [
+        s.name,
+        s.level,
+        s.desc,
+        s.skills?.join(","),
+        s.perks?.join(","),
+        s.syllabus?.map((sec) => sec.title).join(","),
+      ].some((v) => v?.toLowerCase().includes(query))
     );
   }, [skills, query]);
 
   const filteredCareers = useMemo(() => {
     if (!query) return careers;
     return careers.filter((c) =>
-      [c.name, c.level, c.desc, c.skills?.join(","), c.perks?.join(","), c.syllabus?.map(sec => sec.title).join(",")]
-        .some((v) => v?.toLowerCase().includes(query))
+      [
+        c.name,
+        c.level,
+        c.desc,
+        c.skills?.join(","),
+        c.perks?.join(","),
+        c.syllabus?.map((sec) => sec.title).join(","),
+      ].some((v) => v?.toLowerCase().includes(query))
     );
   }, [careers, query]);
 
@@ -477,14 +568,19 @@ export default function PathsAdmin() {
     const { type, id } = deleteTarget;
     try {
       const res = await fetch(
-        `/api/${type === "skill" ? "skillpaths" : type === "career" ? "careerpaths" : "courses"}/${id}`,
+        `/api/${
+          type === "skill" ? "skillpaths" : type === "career" ? "careerpaths" : "courses"
+        }/${id}`,
         { method: "DELETE" }
       );
       if (!res.ok && res.status !== 204) throw new Error("Delete failed");
       if (type === "skill") setSkills((p) => p.filter((x) => x._id !== id));
       else if (type === "career") setCareers((p) => p.filter((x) => x._id !== id));
       else setCourses((p) => p.filter((x) => x._id !== id));
-      showToast(`${type.charAt(0).toUpperCase() + type.slice(1)} deleted`, "success");
+      showToast(
+        `${type.charAt(0).toUpperCase() + type.slice(1)} deleted`,
+        "success"
+      );
     } catch (e) {
       console.error(e);
       showToast("Delete failed", "error");
@@ -528,30 +624,50 @@ export default function PathsAdmin() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
-          throw new Error(j?.error || j?.message || "Create failed");
-        }
-        const json = await safeJson<any>(res, null as any);
-        const created = json?.created ?? json?.data ?? json;
-        const doc = Array.isArray(created) ? created[0] : created;
 
-        if (doc?._id) {
-          if (tab === "skills") setSkills((p) => [doc as SkillPath, ...p]);
-          else setCareers((p) => [doc as CareerPath, ...p]);
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => null);
+          let msg = "Create failed";
+          if (errBody && typeof errBody === "object") {
+            const obj = errBody as { error?: unknown; message?: unknown };
+            if (typeof obj.error === "string") msg = obj.error;
+            else if (typeof obj.message === "string") msg = obj.message;
+          }
+          throw new Error(msg);
+        }
+
+        const json = await safeJson<unknown>(res, null);
+        let created: unknown = json;
+
+        if (created && typeof created === "object") {
+          const obj = created as { created?: unknown; data?: unknown };
+          created = obj.created ?? obj.data ?? created;
+        }
+
+        const docUnknown = Array.isArray(created) ? created[0] : created;
+
+        if (docUnknown && typeof docUnknown === "object" && "_id" in docUnknown) {
+          if (tab === "skills") {
+            setSkills((p) => [docUnknown as SkillPath, ...p]);
+          } else {
+            setCareers((p) => [docUnknown as CareerPath, ...p]);
+          }
         } else {
-          // fallback refetch
-          const list = await getList<any>(url);
+          const list = await getList<SkillPath | CareerPath>(url);
           if (tab === "skills") setSkills(list as SkillPath[]);
           else setCareers(list as CareerPath[]);
         }
 
-        showToast(`${tab === "skills" ? "Skill Path" : "Career Path"} added`, "success");
+        showToast(
+          `${tab === "skills" ? "Skill Path" : "Career Path"} added`,
+          "success"
+        );
         setOpenCreate(false);
         resetForms();
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err);
-        showToast(err?.message || "Server error", "error");
+        const msg = err instanceof Error ? err.message : "Server error";
+        showToast(msg, "error");
       } finally {
         setCreating(false);
       }
@@ -561,11 +677,19 @@ export default function PathsAdmin() {
     // Courses create
     if (tab === "courses") {
       const f = formCourse;
-      if (!f.title || !f.cover || !f.duration || !f.href || !f.category || !f.subCategory) {
+      if (
+        !f.title ||
+        !f.cover ||
+        !f.duration ||
+        !f.href ||
+        !f.category ||
+        !f.subCategory
+      ) {
         showToast("Please fill all required fields", "error");
         return;
       }
       setCreating(true);
+
       const payload = {
         title: f.title.trim(),
         cover: f.cover.trim(),
@@ -587,22 +711,33 @@ export default function PathsAdmin() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
+
         if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
-          throw new Error(j?.error || j?.message || "Create failed");
+          const errBody = await res.json().catch(() => null);
+          let msg = "Create failed";
+          if (errBody && typeof errBody === "object") {
+            const obj = errBody as { error?: unknown; message?: unknown };
+            if (typeof obj.error === "string") msg = obj.error;
+            else if (typeof obj.message === "string") msg = obj.message;
+          }
+          throw new Error(msg);
         }
-        const created = await safeJson<Course>(res, null as any);
-        if (created?._id) setCourses((p) => [created, ...p]);
-        else {
+
+        const created = await safeJson<Course | null>(res, null);
+        if (created && created._id) {
+          setCourses((p) => [created, ...p]);
+        } else {
           const list = await getList<Course>("/api/courses");
           setCourses(list);
         }
+
         showToast("Course added", "success");
         setOpenCreate(false);
         resetForms();
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err);
-        showToast(err?.message || "Server error", "error");
+        const msg = err instanceof Error ? err.message : "Server error";
+        showToast(msg, "error");
       } finally {
         setCreating(false);
       }
@@ -672,7 +807,11 @@ export default function PathsAdmin() {
               className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-700"
             >
               <Plus size={16} /> Add{" "}
-              {tab === "skills" ? "Skill Path" : tab === "careers" ? "Career Path" : "Course"}
+              {tab === "skills"
+                ? "Skill Path"
+                : tab === "careers"
+                ? "Career Path"
+                : "Course"}
             </button>
           </div>
         </div>
@@ -691,18 +830,32 @@ export default function PathsAdmin() {
     );
   }
 
-  function RowPath({ item, type }: { item: SkillPath | CareerPath; type: "skill" | "career" }) {
+  function RowPath({
+    item,
+    type,
+  }: {
+    item: SkillPath | CareerPath;
+    type: "skill" | "career";
+  }) {
     const rating = (item.rating ?? 0).toFixed(1);
     const students = (item.students ?? 0).toLocaleString();
-    const levelTone =
-      item.level === "Advanced" ? "amber" : item.level === "Intermediate" ? "blue" : "green";
+    type LevelTone = "green" | "blue" | "amber";
+    const levelTone: LevelTone =
+      item.level === "Advanced"
+        ? "amber"
+        : item.level === "Intermediate"
+        ? "blue"
+        : "green";
+
+    const perks = item.perks ?? [];
+    const syllabus = item.syllabus ?? [];
 
     return (
       <tr className="hover:bg-gray-50">
         <td className="px-4 py-4">
           <div className="flex items-center gap-3">
             <img
-              src={(item as SkillPath).img || "/assets/images/thumbnails/ai.png"}
+              src={item.img || "/assets/images/thumbnails/ai.png"}
               alt={item.name}
               className="h-12 w-20 rounded-md object-cover border"
             />
@@ -719,23 +872,21 @@ export default function PathsAdmin() {
                 </a>
                 <span className="text-gray-300">•</span>
                 <a
-                  href={buildCheckoutUrl(type === "skill" ? "skill" : "career", (item as any).href, (item as any).slug)}
+                  href={buildCheckoutUrl(type, item.href, item.slug)}
                   className="inline-flex items-center gap-1 text-blue-600 hover:underline"
                 >
                   Enroll now
                 </a>
               </div>
               <div className="mt-1 flex flex-wrap gap-1">
-                {Array.isArray((item as SkillPath).perks) &&
-                  (item as SkillPath).perks!.slice(0, 2).map((p, i) => (
-                    <Pill key={`${item._id}-perk-${i}`} tone="gray">
-                      {p}
-                    </Pill>
-                  ))}
-                {Array.isArray((item as SkillPath).syllabus) &&
-                  (item as SkillPath).syllabus!.length > 0 && (
-                    <Pill tone="orange">{(item as SkillPath).syllabus!.length} sections</Pill>
-                  )}
+                {perks.slice(0, 2).map((p, i) => (
+                  <Pill key={`${item._id}-perk-${i}`} tone="gray">
+                    {p}
+                  </Pill>
+                ))}
+                {syllabus.length > 0 && (
+                  <Pill tone="orange">{syllabus.length} sections</Pill>
+                )}
               </div>
             </div>
           </div>
@@ -746,7 +897,7 @@ export default function PathsAdmin() {
           </div>
         </td>
         <td className="px-4 py-4">
-          <Pill tone={levelTone as any}>{item.level || "Beginner"}</Pill>
+          <Pill tone={levelTone}>{item.level || "Beginner"}</Pill>
         </td>
         <td className="px-4 py-4">
           <div className="inline-flex items-center gap-1 text-sm text-gray-700">
@@ -771,8 +922,14 @@ export default function PathsAdmin() {
   }
 
   function RowCourse({ c }: { c: Course }) {
-    const levelTone =
-      c.level === "Advanced" ? "amber" : c.level === "Intermediate" ? "blue" : "green";
+    type LevelTone = "green" | "blue" | "amber";
+    const levelTone: LevelTone =
+      c.level === "Advanced"
+        ? "amber"
+        : c.level === "Intermediate"
+        ? "blue"
+        : "green";
+
     return (
       <tr className="hover:bg-gray-50">
         <td className="px-4 py-4">
@@ -885,7 +1042,9 @@ export default function PathsAdmin() {
                   </>
                 ) : data.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>{EmptyState("No courses yet. Click “Add” to create one.")}</td>
+                    <td colSpan={6}>
+                      {EmptyState("No courses yet. Click “Add” to create one.")}
+                    </td>
                   </tr>
                 ) : (
                   data
@@ -935,7 +1094,9 @@ export default function PathsAdmin() {
                 <tr>
                   <td colSpan={6}>
                     {EmptyState(
-                      tab === "skills" ? "No skill paths yet. Click “Add” to create one." : "No career paths yet. Click “Add” to create one."
+                      tab === "skills"
+                        ? "No skill paths yet. Click “Add” to create one."
+                        : "No career paths yet. Click “Add” to create one."
                     )}
                   </td>
                 </tr>
@@ -945,8 +1106,8 @@ export default function PathsAdmin() {
                   .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
                   .map((item) => (
                     <RowPath
-                      key={(item as any)._id}
-                      item={item as any}
+                      key={item._id}
+                      item={item}
                       type={tab === "skills" ? "skill" : "career"}
                     />
                   ))
@@ -958,15 +1119,10 @@ export default function PathsAdmin() {
     );
   }
 
-  // Live previews for forms
-  const livePreviewPath =
-    (formPath.img && (formPath.img.startsWith("/") || formPath.img.startsWith("http"))) || false;
+  // Live previews (data only – used inside JSX)
   const perksPreviewPath = parseCommaList(formPath.perks).slice(0, 3);
   const syllabusPreviewPath = parseSyllabusJSON(formPath.syllabus);
 
-  const livePreviewCourse =
-    (formCourse.cover && (formCourse.cover.startsWith("/") || formCourse.cover.startsWith("http"))) ||
-    false;
   const perksPreviewCourse = parseCommaList(formCourse.perks).slice(0, 3);
   const syllabusPreviewCourse = parseSyllabusJSON(formCourse.syllabus);
 
@@ -1012,36 +1168,57 @@ export default function PathsAdmin() {
           resetForms();
         }}
         title={
-          tab === "skills" ? "Add Skill Path" : tab === "careers" ? "Add Career Path" : "Add Course"
+          tab === "skills"
+            ? "Add Skill Path"
+            : tab === "careers"
+            ? "Add Career Path"
+            : "Add Course"
         }
         wide
       >
         {/* Paths Form */}
         {(tab === "skills" || tab === "careers") && (
-          <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form
+            onSubmit={handleCreate}
+            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          >
             <Field label="Name" required>
               <input
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formPath.name}
-                onChange={(e) => setFormPath((f) => ({ ...f, name: e.target.value }))}
+                onChange={(e) =>
+                  setFormPath((f) => ({ ...f, name: e.target.value }))
+                }
                 required
               />
             </Field>
 
-            <Field label="Page Link (href)" required hint="e.g., /skillpath/react or /careerpath/fullstack">
+            <Field
+              label="Page Link (href)"
+              required
+              hint="e.g., /skillpath/react or /careerpath/fullstack"
+            >
               <input
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formPath.href}
-                onChange={(e) => setFormPath((f) => ({ ...f, href: e.target.value }))}
+                onChange={(e) =>
+                  setFormPath((f) => ({ ...f, href: e.target.value }))
+                }
                 required
               />
             </Field>
 
-            <Field label="Image URL / Public Path" required hint="For local: /assets/images/thumbnails/ai.png">
+            <Field
+              label="Image URL / Public Path"
+              required
+              hint="For local: /assets/images/thumbnails/ai.png"
+            >
               <input
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formPath.img}
-                onChange={(e) => setFormPath((f) => ({ ...f, img: e.target.value }))}
+                onChange={(e) =>
+                  setFormPath((f) => ({ ...f, img: e.target.value }))
+                }
                 required
               />
             </Field>
@@ -1050,7 +1227,9 @@ export default function PathsAdmin() {
               <input
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formPath.duration}
-                onChange={(e) => setFormPath((f) => ({ ...f, duration: e.target.value }))}
+                onChange={(e) =>
+                  setFormPath((f) => ({ ...f, duration: e.target.value }))
+                }
                 required
               />
             </Field>
@@ -1059,7 +1238,9 @@ export default function PathsAdmin() {
               <select
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500 bg-white"
                 value={formPath.level}
-                onChange={(e) => setFormPath((f) => ({ ...f, level: e.target.value }))}
+                onChange={(e) =>
+                  setFormPath((f) => ({ ...f, level: e.target.value }))
+                }
               >
                 {LEVELS.map((lv) => (
                   <option key={lv} value={lv}>
@@ -1069,11 +1250,16 @@ export default function PathsAdmin() {
               </select>
             </Field>
 
-            <Field label="Skills (comma separated)" hint="e.g., React, TypeScript, MongoDB">
+            <Field
+              label="Skills (comma separated)"
+              hint="e.g., React, TypeScript, MongoDB"
+            >
               <input
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formPath.skills}
-                onChange={(e) => setFormPath((f) => ({ ...f, skills: e.target.value }))}
+                onChange={(e) =>
+                  setFormPath((f) => ({ ...f, skills: e.target.value }))
+                }
               />
             </Field>
 
@@ -1085,7 +1271,9 @@ export default function PathsAdmin() {
                 max="5"
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formPath.rating}
-                onChange={(e) => setFormPath((f) => ({ ...f, rating: e.target.value }))}
+                onChange={(e) =>
+                  setFormPath((f) => ({ ...f, rating: e.target.value }))
+                }
               />
             </Field>
 
@@ -1095,7 +1283,9 @@ export default function PathsAdmin() {
                 min="0"
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formPath.students}
-                onChange={(e) => setFormPath((f) => ({ ...f, students: e.target.value }))}
+                onChange={(e) =>
+                  setFormPath((f) => ({ ...f, students: e.target.value }))
+                }
               />
             </Field>
 
@@ -1104,7 +1294,9 @@ export default function PathsAdmin() {
                 <textarea
                   className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500 min-h-[100px]"
                   value={formPath.desc}
-                  onChange={(e) => setFormPath((f) => ({ ...f, desc: e.target.value }))}
+                  onChange={(e) =>
+                    setFormPath((f) => ({ ...f, desc: e.target.value }))
+                  }
                   required
                 />
               </Field>
@@ -1118,7 +1310,9 @@ export default function PathsAdmin() {
                 <input
                   className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                   value={formPath.perks}
-                  onChange={(e) => setFormPath((f) => ({ ...f, perks: e.target.value }))}
+                  onChange={(e) =>
+                    setFormPath((f) => ({ ...f, perks: e.target.value }))
+                  }
                 />
               </Field>
             </div>
@@ -1131,7 +1325,9 @@ export default function PathsAdmin() {
                 <textarea
                   className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500 min-h-[120px] font-mono text-xs"
                   value={formPath.syllabus}
-                  onChange={(e) => setFormPath((f) => ({ ...f, syllabus: e.target.value }))}
+                  onChange={(e) =>
+                    setFormPath((f) => ({ ...f, syllabus: e.target.value }))
+                  }
                   placeholder='[{"title":"Module 1","items":["Topic A","Topic B"]},{"title":"Module 2"}]'
                 />
               </Field>
@@ -1143,8 +1339,14 @@ export default function PathsAdmin() {
                 <div className="col-span-1">
                   <div className="text-sm font-medium mb-2">Image Preview</div>
                   <div className="aspect-[16/9] rounded-xl border bg-gray-50 flex items-center justify-center overflow-hidden">
-                    {formPath.img && (formPath.img.startsWith("/") || formPath.img.startsWith("http")) ? (
-                      <img src={formPath.img} className="h-full w-full object-cover" alt="preview" />
+                    {formPath.img &&
+                    (formPath.img.startsWith("/") ||
+                      formPath.img.startsWith("http")) ? (
+                      <img
+                        src={formPath.img}
+                        className="h-full w-full object-cover"
+                        alt="preview"
+                      />
                     ) : (
                       <div className="text-gray-400 text-sm flex items-center gap-2">
                         <Images size={18} /> Enter a valid URL or /public path
@@ -1158,12 +1360,20 @@ export default function PathsAdmin() {
                   <div className="rounded-xl border bg-white p-4 shadow-sm">
                     <div className="flex items-center gap-3">
                       <img
-                        src={formPath.img && (formPath.img.startsWith("/") || formPath.img.startsWith("http")) ? formPath.img : "/assets/images/thumbnails/ai.png"}
+                        src={
+                          formPath.img &&
+                          (formPath.img.startsWith("/") ||
+                            formPath.img.startsWith("http"))
+                            ? formPath.img
+                            : "/assets/images/thumbnails/ai.png"
+                        }
                         className="h-14 w-24 rounded-md object-cover border"
                         alt=""
                       />
                       <div className="min-w-0">
-                        <div className="font-semibold truncate">{formPath.name || "Untitled path"}</div>
+                        <div className="font-semibold truncate">
+                          {formPath.name || "Untitled path"}
+                        </div>
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-600">
                           <span className="inline-flex items-center gap-1">
                             <Clock size={14} /> {formPath.duration || "—"}
@@ -1171,7 +1381,11 @@ export default function PathsAdmin() {
                           <Pill tone="orange">{formPath.level}</Pill>
                           {!!formPath.rating && (
                             <span className="inline-flex items-center gap-1">
-                              <Star size={14} className="text-yellow-500" /> {formPath.rating}
+                              <Star
+                                size={14}
+                                className="text-yellow-500"
+                              />{" "}
+                              {formPath.rating}
                             </span>
                           )}
                           {!!formPath.students && (
@@ -1180,7 +1394,9 @@ export default function PathsAdmin() {
                             </span>
                           )}
                           {syllabusPreviewPath?.length ? (
-                            <Pill tone="green">{syllabusPreviewPath.length} sections</Pill>
+                            <Pill tone="green">
+                              {syllabusPreviewPath.length} sections
+                            </Pill>
                           ) : null}
                         </div>
 
@@ -1224,7 +1440,11 @@ export default function PathsAdmin() {
                 disabled={creating}
                 className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60"
               >
-                {creating ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
+                {creating ? (
+                  <Loader2 className="animate-spin" size={16} />
+                ) : (
+                  <Plus size={16} />
+                )}
                 Create
               </button>
             </div>
@@ -1233,12 +1453,17 @@ export default function PathsAdmin() {
 
         {/* Courses Form */}
         {tab === "courses" && (
-          <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form
+            onSubmit={handleCreate}
+            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          >
             <Field label="Title" required>
               <input
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formCourse.title}
-                onChange={(e) => setFormCourse((f) => ({ ...f, title: e.target.value }))}
+                onChange={(e) =>
+                  setFormCourse((f) => ({ ...f, title: e.target.value }))
+                }
                 required
               />
             </Field>
@@ -1247,7 +1472,9 @@ export default function PathsAdmin() {
               <input
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formCourse.duration}
-                onChange={(e) => setFormCourse((f) => ({ ...f, duration: e.target.value }))}
+                onChange={(e) =>
+                  setFormCourse((f) => ({ ...f, duration: e.target.value }))
+                }
                 required
               />
             </Field>
@@ -1256,7 +1483,9 @@ export default function PathsAdmin() {
               <input
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formCourse.cover}
-                onChange={(e) => setFormCourse((f) => ({ ...f, cover: e.target.value }))}
+                onChange={(e) =>
+                  setFormCourse((f) => ({ ...f, cover: e.target.value }))
+                }
                 placeholder="/assets/covers/react.png"
                 required
               />
@@ -1266,7 +1495,9 @@ export default function PathsAdmin() {
               <select
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500 bg-white"
                 value={formCourse.level}
-                onChange={(e) => setFormCourse((f) => ({ ...f, level: e.target.value }))}
+                onChange={(e) =>
+                  setFormCourse((f) => ({ ...f, level: e.target.value }))
+                }
               >
                 {LEVELS.map((lv) => (
                   <option key={lv} value={lv}>
@@ -1301,7 +1532,9 @@ export default function PathsAdmin() {
               <select
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500 bg-white"
                 value={formCourse.subCategory}
-                onChange={(e) => setFormCourse((f) => ({ ...f, subCategory: e.target.value }))}
+                onChange={(e) =>
+                  setFormCourse((f) => ({ ...f, subCategory: e.target.value }))
+                }
                 required
               >
                 {subOptions.map((sub) => (
@@ -1317,7 +1550,9 @@ export default function PathsAdmin() {
                 <input
                   className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                   value={formCourse.href}
-                  onChange={(e) => setFormCourse((f) => ({ ...f, href: e.target.value }))}
+                  onChange={(e) =>
+                    setFormCourse((f) => ({ ...f, href: e.target.value }))
+                  }
                   placeholder="/courses/react-101"
                   required
                 />
@@ -1332,7 +1567,9 @@ export default function PathsAdmin() {
                 max="5"
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formCourse.rating}
-                onChange={(e) => setFormCourse((f) => ({ ...f, rating: e.target.value }))}
+                onChange={(e) =>
+                  setFormCourse((f) => ({ ...f, rating: e.target.value }))
+                }
               />
             </Field>
 
@@ -1342,7 +1579,9 @@ export default function PathsAdmin() {
                 min="0"
                 className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                 value={formCourse.students}
-                onChange={(e) => setFormCourse((f) => ({ ...f, students: e.target.value }))}
+                onChange={(e) =>
+                  setFormCourse((f) => ({ ...f, students: e.target.value }))
+                }
               />
             </Field>
 
@@ -1352,7 +1591,9 @@ export default function PathsAdmin() {
                 <textarea
                   className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500 min-h-[100px]"
                   value={formCourse.desc}
-                  onChange={(e) => setFormCourse((f) => ({ ...f, desc: e.target.value }))}
+                  onChange={(e) =>
+                    setFormCourse((f) => ({ ...f, desc: e.target.value }))
+                  }
                 />
               </Field>
             </div>
@@ -1366,7 +1607,9 @@ export default function PathsAdmin() {
                 <input
                   className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
                   value={formCourse.perks}
-                  onChange={(e) => setFormCourse((f) => ({ ...f, perks: e.target.value }))}
+                  onChange={(e) =>
+                    setFormCourse((f) => ({ ...f, perks: e.target.value }))
+                  }
                 />
               </Field>
             </div>
@@ -1380,7 +1623,9 @@ export default function PathsAdmin() {
                 <textarea
                   className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500 min-h-[120px] font-mono text-xs"
                   value={formCourse.syllabus}
-                  onChange={(e) => setFormCourse((f) => ({ ...f, syllabus: e.target.value }))}
+                  onChange={(e) =>
+                    setFormCourse((f) => ({ ...f, syllabus: e.target.value }))
+                  }
                   placeholder='[{"title":"Module 1","items":["Topic A","Topic B"]},{"title":"Module 2"}]'
                 />
               </Field>
@@ -1392,8 +1637,14 @@ export default function PathsAdmin() {
                 <div className="col-span-1">
                   <div className="text-sm font-medium mb-2">Image Preview</div>
                   <div className="aspect-[16/9] rounded-xl border bg-gray-50 flex items-center justify-center overflow-hidden">
-                    {formCourse.cover && (formCourse.cover.startsWith("/") || formCourse.cover.startsWith("http")) ? (
-                      <img src={formCourse.cover} className="h-full w-full object-cover" alt="preview" />
+                    {formCourse.cover &&
+                    (formCourse.cover.startsWith("/") ||
+                      formCourse.cover.startsWith("http")) ? (
+                      <img
+                        src={formCourse.cover}
+                        className="h-full w-full object-cover"
+                        alt="preview"
+                      />
                     ) : (
                       <div className="text-gray-400 text-sm flex items-center gap-2">
                         <Images size={18} /> Enter a valid URL or /public path
@@ -1407,12 +1658,20 @@ export default function PathsAdmin() {
                   <div className="rounded-xl border bg-white p-4 shadow-sm">
                     <div className="flex items-center gap-3">
                       <img
-                        src={formCourse.cover && (formCourse.cover.startsWith("/") || formCourse.cover.startsWith("http")) ? formCourse.cover : "/assets/images/thumbnails/ai.png"}
+                        src={
+                          formCourse.cover &&
+                          (formCourse.cover.startsWith("/") ||
+                            formCourse.cover.startsWith("http"))
+                            ? formCourse.cover
+                            : "/assets/images/thumbnails/ai.png"
+                        }
                         className="h-14 w-24 rounded-md object-cover border"
                         alt=""
                       />
                       <div className="min-w-0">
-                        <div className="font-semibold truncate">{formCourse.title || "Untitled course"}</div>
+                        <div className="font-semibold truncate">
+                          {formCourse.title || "Untitled course"}
+                        </div>
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-600">
                           <span className="inline-flex items-center gap-1">
                             <Clock size={14} /> {formCourse.duration || "—"}
@@ -1421,14 +1680,23 @@ export default function PathsAdmin() {
                           {formCourse.category && (
                             <Pill tone="blue">
                               <span className="inline-flex items-center gap-1">
-                                <Tag className="h-3.5 w-3.5" /> {formCourse.category}
+                                <Tag className="h-3.5 w-3.5" />{" "}
+                                {formCourse.category}
                               </span>
                             </Pill>
                           )}
-                          {formCourse.subCategory && <Pill tone="purple">{formCourse.subCategory}</Pill>}
+                          {formCourse.subCategory && (
+                            <Pill tone="purple">
+                              {formCourse.subCategory}
+                            </Pill>
+                          )}
                           {!!formCourse.rating && (
                             <span className="inline-flex items-center gap-1">
-                              <Star size={14} className="text-yellow-500" /> {formCourse.rating}
+                              <Star
+                                size={14}
+                                className="text-yellow-500"
+                              />{" "}
+                              {formCourse.rating}
                             </span>
                           )}
                           {!!formCourse.students && (
@@ -1437,7 +1705,9 @@ export default function PathsAdmin() {
                             </span>
                           )}
                           {syllabusPreviewCourse?.length ? (
-                            <Pill tone="green">{syllabusPreviewCourse.length} sections</Pill>
+                            <Pill tone="green">
+                              {syllabusPreviewCourse.length} sections
+                            </Pill>
                           ) : null}
                         </div>
 
@@ -1481,7 +1751,11 @@ export default function PathsAdmin() {
                 disabled={creating}
                 className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60"
               >
-                {creating ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
+                {creating ? (
+                  <Loader2 className="animate-spin" size={16} />
+                ) : (
+                  <Plus size={16} />
+                )}
                 Create
               </button>
             </div>
@@ -1490,11 +1764,16 @@ export default function PathsAdmin() {
       </Modal>
 
       {/* Delete Confirm */}
-      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Confirm Deletion">
+      <Modal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title="Confirm Deletion"
+      >
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
             Are you sure you want to delete{" "}
-            <span className="font-semibold">{deleteTarget?.name}</span>? This action cannot be undone.
+            <span className="font-semibold">{deleteTarget?.name}</span>? This
+            action cannot be undone.
           </p>
         </div>
         <div className="mt-4 flex items-center justify-end gap-3">

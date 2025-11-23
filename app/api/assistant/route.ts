@@ -5,7 +5,7 @@ export const runtime = "edge"; // or "nodejs" if you prefer
 
 type HistoryMsg = { role: "system" | "user" | "assistant"; content: string };
 
-function json(data: any, status = 200) {
+function json<T>(data: T, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: { "content-type": "application/json" },
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
 
     const messages: HistoryMsg[] = [
       { role: "system", content: systemFor(action) },
-      ...(history as HistoryMsg[]),
+      ...history,
       { role: "user", content: prompt },
     ];
 
@@ -107,8 +107,10 @@ export async function POST(req: Request) {
       "Sorry, I couldn't generate a reply.";
 
     return json({ answer, model, usage: completion.usage });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Assistant API error:", err);
-    return json({ error: err?.message || "Server error" }, 500);
+    const message =
+      err instanceof Error ? err.message : "Server error";
+    return json({ error: message }, 500);
   }
 }

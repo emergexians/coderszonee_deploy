@@ -1,7 +1,14 @@
+/* eslint-disable @next/next/no-img-element */
 // components/admin/courses/CoursesAdmin.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
@@ -50,14 +57,39 @@ type ToastState =
   | { show: false }
   | { show: true; type: "success" | "error" | "info"; msg: string };
 
+interface CourseFormState {
+  title: string;
+  cover: string;
+  duration: string;
+  level: string;
+  category: string;
+  subCategory: string;
+  rating: string;
+  students: string;
+  desc: string;
+  perks: string;
+}
+
 /* =========================
    Constants
 ========================= */
 const LEVELS = ["Beginner", "Intermediate", "Advanced"] as const;
 
 const CATEGORY_MAP: Record<string, string[]> = {
-  "Web Development": ["HTML & CSS", "JavaScript", "React / Next.js", "Node.js", "Full-Stack"],
-  "Data Science": ["Python", "Pandas", "Machine Learning", "Deep Learning", "Statistics"],
+  "Web Development": [
+    "HTML & CSS",
+    "JavaScript",
+    "React / Next.js",
+    "Node.js",
+    "Full-Stack",
+  ],
+  "Data Science": [
+    "Python",
+    "Pandas",
+    "Machine Learning",
+    "Deep Learning",
+    "Statistics",
+  ],
   "AI & ML": ["NLP", "Computer Vision", "Generative AI", "Reinforcement Learning"],
   Business: ["Marketing", "Finance", "Entrepreneurship", "Product Management"],
   Design: ["UI/UX", "Graphic Design", "Figma", "3D & Motion"],
@@ -123,11 +155,21 @@ function SkeletonRow() {
           <div className="h-3 w-40 rounded bg-gray-200" />
         </div>
       </td>
-      <td className="px-4 py-4"><div className="h-3 w-16 rounded bg-gray-200" /></td>
-      <td className="px-4 py-4"><div className="h-6 w-24 rounded-full bg-gray-200" /></td>
-      <td className="px-4 py-4"><div className="h-3 w-12 rounded bg-gray-200" /></td>
-      <td className="px-4 py-4"><div className="h-3 w-12 rounded bg-gray-200" /></td>
-      <td className="px-4 py-4"><div className="h-8 w-24 rounded bg-gray-200" /></td>
+      <td className="px-4 py-4">
+        <div className="h-3 w-16 rounded bg-gray-200" />
+      </td>
+      <td className="px-4 py-4">
+        <div className="h-6 w-24 rounded-full bg-gray-200" />
+      </td>
+      <td className="px-4 py-4">
+        <div className="h-3 w-12 rounded bg-gray-200" />
+      </td>
+      <td className="px-4 py-4">
+        <div className="h-3 w-12 rounded bg-gray-200" />
+      </td>
+      <td className="px-4 py-4">
+        <div className="h-8 w-24 rounded bg-gray-200" />
+      </td>
     </tr>
   );
 }
@@ -135,6 +177,12 @@ function SkeletonRow() {
 /* =========================
    Tiny Uploader (URL + Local Upload)
 ========================= */
+
+type UploadResponse = {
+  url?: string;
+  error?: string;
+};
+
 function UrlOrUpload({
   value,
   onChange,
@@ -158,11 +206,34 @@ function UrlOrUpload({
       const body = new FormData();
       body.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Upload failed");
-      onChange(data.url as string);
-    } catch (e: any) {
-      setErr(e?.message || "Upload failed");
+
+      const ct = res.headers.get("content-type") || "";
+      const isJson = ct.toLowerCase().includes("application/json");
+
+      let dataJson: UploadResponse | null = null;
+      let dataText = "";
+
+      if (isJson) {
+        dataJson = (await res.json().catch(() => null)) as UploadResponse | null;
+      } else {
+        dataText = await res.text();
+      }
+
+      if (!res.ok || !isJson || !dataJson) {
+        let msg: string | undefined;
+        if (dataJson && typeof dataJson.error === "string") {
+          msg = dataJson.error;
+        } else if (dataText) {
+          msg = dataText.slice(0, 200);
+        }
+        throw new Error(msg || `Upload failed (${res.status})`);
+      }
+
+      if (!dataJson.url) throw new Error("Upload did not return a URL");
+      onChange(String(dataJson.url));
+    } catch (e: unknown) {
+      if (e instanceof Error) setErr(e.message);
+      else setErr("Upload failed");
     } finally {
       setUploading(false);
     }
@@ -194,7 +265,7 @@ function UrlOrUpload({
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
-            if (f) handleFile(f);
+            if (f) void handleFile(f);
           }}
         />
       </label>
@@ -215,20 +286,39 @@ function SyllabusBuilder({
   onChange: (next: SyllabusSection[]) => void;
   required?: boolean;
 }) {
-  function addSection() { onChange([...value, { title: "", items: [""] }]); }
-  function removeSection(i: number) { const n = value.slice(); n.splice(i, 1); onChange(n); }
-  function setSectionTitle(i: number, title: string) { const n = value.slice(); n[i] = { ...n[i], title }; onChange(n); }
+  function addSection() {
+    onChange([...value, { title: "", items: [""] }]);
+  }
+  function removeSection(i: number) {
+    const n = value.slice();
+    n.splice(i, 1);
+    onChange(n);
+  }
+  function setSectionTitle(i: number, title: string) {
+    const n = value.slice();
+    n[i] = { ...n[i], title };
+    onChange(n);
+  }
   function addItem(i: number) {
-    const n = value.slice(); const items = n[i].items ? n[i].items!.slice() : []; items.push("");
-    n[i].items = items; onChange(n);
+    const n = value.slice();
+    const items = n[i].items ? n[i].items!.slice() : [];
+    items.push("");
+    n[i].items = items;
+    onChange(n);
   }
   function setItem(i: number, j: number, text: string) {
-    const n = value.slice(); const items = n[i].items ? n[i].items!.slice() : []; items[j] = text;
-    n[i].items = items; onChange(n);
+    const n = value.slice();
+    const items = n[i].items ? n[i].items!.slice() : [];
+    items[j] = text;
+    n[i].items = items;
+    onChange(n);
   }
   function removeItem(i: number, j: number) {
-    const n = value.slice(); const items = (n[i].items || []).slice(); items.splice(j, 1);
-    n[i].items = items; onChange(n);
+    const n = value.slice();
+    const items = (n[i].items || []).slice();
+    items.splice(j, 1);
+    n[i].items = items;
+    onChange(n);
   }
 
   const hasAtLeastOne = value.length > 0 && value[0].title.trim() !== "";
@@ -239,8 +329,11 @@ function SyllabusBuilder({
         <div className="text-sm text-gray-600">
           Build sections & topics visually {required && <span className="text-red-500">*</span>}
         </div>
-        <button type="button" onClick={addSection}
-          className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm hover:bg-gray-50">
+        <button
+          type="button"
+          onClick={addSection}
+          className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm hover:bg-gray-50"
+        >
           <PlusCircle size={16} /> Add section
         </button>
       </div>
@@ -262,8 +355,11 @@ function SyllabusBuilder({
                 value={sec.title}
                 onChange={(e) => setSectionTitle(i, e.target.value)}
               />
-              <button type="button" onClick={() => removeSection(i)}
-                className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm hover:bg-red-50 hover:text-red-600">
+              <button
+                type="button"
+                onClick={() => removeSection(i)}
+                className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm hover:bg-red-50 hover:text-red-600"
+              >
                 <MinusCircle size={16} /> Remove
               </button>
             </div>
@@ -277,15 +373,21 @@ function SyllabusBuilder({
                     value={it}
                     onChange={(e) => setItem(i, j, e.target.value)}
                   />
-                  <button type="button" onClick={() => removeItem(i, j)}
+                  <button
+                    type="button"
+                    onClick={() => removeItem(i, j)}
                     className="rounded-lg border px-2 py-2 text-sm hover:bg-red-50 hover:text-red-600"
-                    aria-label="Remove topic">
+                    aria-label="Remove topic"
+                  >
                     <MinusCircle size={16} />
                   </button>
                 </div>
               ))}
-              <button type="button" onClick={() => addItem(i)}
-                className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs hover:bg-gray-50">
+              <button
+                type="button"
+                onClick={() => addItem(i)}
+                className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs hover:bg-gray-50"
+              >
                 <PlusCircle size={14} /> Add topic
               </button>
             </div>
@@ -305,23 +407,27 @@ function SyllabusBuilder({
 ========================= */
 async function safeJson<T>(res: Response, fallback: T): Promise<T> {
   try {
-    if (!res) return fallback as T;
-    if (res.status === 204) return fallback as T;
+    if (!res) return fallback;
+    if (res.status === 204) return fallback;
     const ct = res.headers.get("content-type") || "";
-    if (!ct.toLowerCase().includes("application/json")) return fallback as T;
+    if (!ct.toLowerCase().includes("application/json")) return fallback;
     return (await res.json()) as T;
   } catch {
-    return fallback as T;
+    return fallback;
   }
 }
 
-async function getList<T = any>(url: string): Promise<T[]> {
+async function getList<T = unknown>(url: string): Promise<T[]> {
   try {
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return [];
-    const json = await safeJson<any>(res, {} as any);
-    const items = Array.isArray(json) ? json : json?.data ?? json?.items;
-    return Array.isArray(items) ? items : [];
+    const json = await safeJson<unknown>(res, {});
+    let items: unknown = json;
+    if (!Array.isArray(items) && typeof items === "object" && items !== null) {
+      const obj = items as { data?: unknown; items?: unknown };
+      items = obj.data ?? obj.items ?? [];
+    }
+    return Array.isArray(items) ? (items as T[]) : [];
   } catch {
     return [];
   }
@@ -356,12 +462,14 @@ export default function CoursesAdmin() {
 
   // Delete confirm
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(
+    null
+  );
 
   const defaultCategory = CATEGORY_LIST[0];
   const defaultSub = CATEGORY_MAP[defaultCategory][0];
 
-  const [formCourse, setFormCourse] = useState({
+  const [formCourse, setFormCourse] = useState<CourseFormState>({
     title: "",
     cover: "",
     duration: "",
@@ -380,11 +488,15 @@ export default function CoursesAdmin() {
     [formCourse.category]
   );
 
+  // keep subCategory valid if category changes
   useEffect(() => {
     if (!subOptions.includes(formCourse.subCategory)) {
-      setFormCourse((f) => ({ ...f, subCategory: subOptions[0] || "" }));
+      setFormCourse((f) => ({
+        ...f,
+        subCategory: subOptions[0] || "",
+      }));
     }
-  }, [subOptions]);
+  }, [subOptions, formCourse.subCategory]);
 
   // Initial load
   useEffect(() => {
@@ -400,18 +512,26 @@ export default function CoursesAdmin() {
         if (mounted) setLoading(false);
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const query = q.trim().toLowerCase();
   const filteredCourses = useMemo(() => {
     if (!query) return courses;
     return courses.filter((c) =>
-      [c.title, c.level, c.category, c.subCategory].some((v) => v?.toLowerCase().includes(query))
+      [c.title, c.level, c.category, c.subCategory].some((v) =>
+        v?.toLowerCase().includes(query)
+      )
     );
   }, [courses, query]);
 
-  function showToast(msg: string, type: Extract<ToastState, { show: true }>["type"] = "success") {
+  function showToast(
+    msg: string,
+    type: Extract<ToastState, { show: true }>["type"] = "success"
+  ) {
     setToast({ show: true, type, msg });
     setTimeout(() => setToast({ show: false }), 2500);
   }
@@ -460,8 +580,15 @@ export default function CoursesAdmin() {
     if (creating) return;
 
     const f = formCourse;
-    if (!f.title || !f.cover || !f.duration || !f.level ||
-        !f.category || !f.subCategory || !f.desc) {
+    if (
+      !f.title ||
+      !f.cover ||
+      !f.duration ||
+      !f.level ||
+      !f.category ||
+      !f.subCategory ||
+      !f.desc
+    ) {
       showToast("Please fill all required fields", "error");
       return;
     }
@@ -470,7 +597,9 @@ export default function CoursesAdmin() {
       .filter((s) => s.title.trim())
       .map((s) => ({
         title: s.title.trim(),
-        ...(s.items?.length ? { items: s.items.filter(Boolean).map((x) => x.trim()) } : {}),
+        ...(s.items?.length
+          ? { items: s.items.filter(Boolean).map((x) => x.trim()) }
+          : {}),
       }));
 
     setCreating(true);
@@ -494,19 +623,34 @@ export default function CoursesAdmin() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j?.error || j?.message || "Create failed");
+
+      const data = await safeJson<
+        (Course & { error?: unknown; message?: unknown }) | {
+          error?: unknown;
+          message?: unknown;
+        } | null
+      >(res, null);
+
+      if (!res.ok || !data || !(data as Course)._id) {
+        const maybeErr = data as { error?: unknown; message?: unknown } | null;
+        let msg = "Create failed";
+        if (maybeErr && typeof maybeErr.error === "string") msg = maybeErr.error;
+        else if (maybeErr && typeof maybeErr.message === "string")
+          msg = maybeErr.message;
+        throw new Error(msg);
       }
-      const created = await safeJson<Course>(res, null as any);
-      if (created?._id) setCourses((p) => [created, ...p]);
+
+      const created = data as Course;
+      if (created._id) setCourses((p) => [created, ...p]);
       else setCourses(await getList<Course>("/api/course/courses"));
+
       showToast("Course added", "success");
       setOpenCreate(false);
       resetForms();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      showToast(err?.message || "Server error", "error");
+      const msg = err instanceof Error ? err.message : "Server error";
+      showToast(msg, "error");
     } finally {
       setCreating(false);
     }
@@ -518,17 +662,22 @@ export default function CoursesAdmin() {
     setOpenEdit(true);
     setEditLoading(true);
     try {
-      const res = await fetch(`/api/course/courses/${id}`, { cache: "no-store" });
-      const doc = await safeJson<Course>(res, null as any);
+      const res = await fetch(`/api/course/courses/${id}`, {
+        cache: "no-store",
+      });
+      const doc = await safeJson<Course | null>(res, null);
       if (!res.ok || !doc?._id) throw new Error("Failed to load course");
 
       setFormCourse({
         title: doc.title || "",
         cover: doc.cover || "",
         duration: doc.duration || "",
-        level: (doc.level as any) || "Beginner",
+        level: doc.level || "Beginner",
         category: doc.category || defaultCategory,
-        subCategory: doc.subCategory || CATEGORY_MAP[doc.category || defaultCategory]?.[0] || defaultSub,
+        subCategory:
+          doc.subCategory ||
+          CATEGORY_MAP[doc.category || defaultCategory]?.[0] ||
+          defaultSub,
         rating: doc.rating != null ? String(doc.rating) : "",
         students: doc.students != null ? String(doc.students) : "",
         desc: doc.desc || "",
@@ -550,8 +699,15 @@ export default function CoursesAdmin() {
     if (editing || !editingId) return;
 
     const f = formCourse;
-    if (!f.title || !f.cover || !f.duration || !f.level ||
-        !f.category || !f.subCategory || !f.desc) {
+    if (
+      !f.title ||
+      !f.cover ||
+      !f.duration ||
+      !f.level ||
+      !f.category ||
+      !f.subCategory ||
+      !f.desc
+    ) {
       showToast("Please fill all required fields", "error");
       return;
     }
@@ -560,7 +716,9 @@ export default function CoursesAdmin() {
       .filter((s) => s.title.trim())
       .map((s) => ({
         title: s.title.trim(),
-        ...(s.items?.length ? { items: s.items.filter(Boolean).map((x) => x.trim()) } : {}),
+        ...(s.items?.length
+          ? { items: s.items.filter(Boolean).map((x) => x.trim()) }
+          : {}),
       }));
 
     setEditing(true);
@@ -584,20 +742,36 @@ export default function CoursesAdmin() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const updated = await safeJson<Course>(res, null as any);
-      if (!res.ok || !updated?._id) {
-        const j = updated as any;
-        throw new Error(j?.error || j?.message || "Update failed");
+
+      const data = await safeJson<
+        (Course & { error?: unknown; message?: unknown }) | {
+          error?: unknown;
+          message?: unknown;
+        } | null
+      >(res, null);
+
+      if (!res.ok || !data || !(data as Course)._id) {
+        const maybeErr = data as { error?: unknown; message?: unknown } | null;
+        let msg = "Update failed";
+        if (maybeErr && typeof maybeErr.error === "string") msg = maybeErr.error;
+        else if (maybeErr && typeof maybeErr.message === "string")
+          msg = maybeErr.message;
+        throw new Error(msg);
       }
 
-      setCourses((prev) => prev.map((c) => (c._id === updated._id ? { ...c, ...updated } : c)));
+      const updated = data as Course;
+
+      setCourses((prev) =>
+        prev.map((c) => (c._id === updated._id ? { ...c, ...updated } : c))
+      );
       showToast("Course updated", "success");
       setOpenEdit(false);
       setEditingId(null);
       resetForms();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      showToast(err?.message || "Server error", "error");
+      const msg = err instanceof Error ? err.message : "Server error";
+      showToast(msg, "error");
     } finally {
       setEditing(false);
     }
@@ -645,7 +819,15 @@ export default function CoursesAdmin() {
           <div className="text-sm text-gray-700">{c.subCategory}</div>
         </td>
         <td className="px-4 py-4">
-          <Pill tone={c.level === "Advanced" ? "amber" : c.level === "Intermediate" ? "blue" : "green"}>
+          <Pill
+            tone={
+              c.level === "Advanced"
+                ? "amber"
+                : c.level === "Intermediate"
+                ? "blue"
+                : "green"
+            }
+          >
             {c.level}
           </Pill>
         </td>
@@ -675,7 +857,9 @@ export default function CoursesAdmin() {
   }
 
   const livePreview =
-    (formCourse.cover && (formCourse.cover.startsWith("/") || formCourse.cover.startsWith("http"))) || false;
+    (formCourse.cover &&
+      (formCourse.cover.startsWith("/") || formCourse.cover.startsWith("http"))) ||
+    false;
   const perksPreview = parseCommaList(formCourse.perks).slice(0, 3);
 
   return (
@@ -702,7 +886,10 @@ export default function CoursesAdmin() {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => { resetForms(); setOpenCreate(true); }}
+                onClick={() => {
+                  resetForms();
+                  setOpenCreate(true);
+                }}
                 className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-700"
               >
                 <Plus size={16} /> Add Course
@@ -744,7 +931,9 @@ export default function CoursesAdmin() {
                   </>
                 ) : filteredCourses.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>{EmptyState("No courses yet. Click “Add Course”.")}</td>
+                    <td colSpan={6}>
+                      {EmptyState("No courses yet. Click “Add Course”.")}
+                    </td>
                   </tr>
                 ) : (
                   filteredCourses
@@ -796,7 +985,10 @@ export default function CoursesAdmin() {
           livePreview={livePreview}
           perksPreview={perksPreview}
           submitting={creating}
-          onCancel={() => { resetForms(); setOpenCreate(false); }}
+          onCancel={() => {
+            resetForms();
+            setOpenCreate(false);
+          }}
           onSubmit={handleCreate}
         />
       </Modal>
@@ -838,15 +1030,23 @@ export default function CoursesAdmin() {
       </Modal>
 
       {/* Delete Confirm */}
-      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Confirm Deletion">
+      <Modal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title="Confirm Deletion"
+      >
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
-            Are you sure you want to delete <span className="font-semibold">{deleteTarget?.title}</span>? This action
+            Are you sure you want to delete{" "}
+            <span className="font-semibold">{deleteTarget?.title}</span>? This action
             cannot be undone.
           </p>
         </div>
         <div className="mt-4 flex items-center justify-end gap-3">
-          <button onClick={() => setConfirmOpen(false)} className="rounded-xl border px-4 py-2 text-sm hover:bg-gray-50">
+          <button
+            onClick={() => setConfirmOpen(false)}
+            className="rounded-xl border px-4 py-2 text-sm hover:bg-gray-50"
+          >
             Cancel
           </button>
           <button
@@ -877,12 +1077,8 @@ function CourseForm({
   onSubmit,
   isEdit = false,
 }: {
-  formCourse: {
-    title: string; cover: string; duration: string; level: string;
-    category: string; subCategory: string; rating: string; students: string;
-    desc: string; perks: string;
-  };
-  setFormCourse: React.Dispatch<React.SetStateAction<any>>;
+  formCourse: CourseFormState;
+  setFormCourse: Dispatch<SetStateAction<CourseFormState>>;
   syllabusCourse: SyllabusSection[];
   setSyllabusCourse: (next: SyllabusSection[]) => void;
   subOptions: string[];
@@ -900,7 +1096,12 @@ function CourseForm({
           required
           className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
           value={formCourse.title}
-          onChange={(e) => setFormCourse((f: any) => ({ ...f, title: e.target.value }))}
+          onChange={(e) =>
+            setFormCourse((f) => ({
+              ...f,
+              title: e.target.value,
+            }))
+          }
         />
       </Field>
 
@@ -909,7 +1110,12 @@ function CourseForm({
           required
           className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
           value={formCourse.duration}
-          onChange={(e) => setFormCourse((f: any) => ({ ...f, duration: e.target.value }))}
+          onChange={(e) =>
+            setFormCourse((f) => ({
+              ...f,
+              duration: e.target.value,
+            }))
+          }
         />
       </Field>
 
@@ -917,7 +1123,12 @@ function CourseForm({
         <UrlOrUpload
           required
           value={formCourse.cover}
-          onChange={(url) => setFormCourse((f: any) => ({ ...f, cover: url }))}
+          onChange={(url) =>
+            setFormCourse((f) => ({
+              ...f,
+              cover: url,
+            }))
+          }
           placeholder="click to upload or enter image URL"
           buttonLabel="Upload cover"
         />
@@ -928,7 +1139,12 @@ function CourseForm({
           required
           className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500 bg-white"
           value={formCourse.level}
-          onChange={(e) => setFormCourse((f: any) => ({ ...f, level: e.target.value }))}
+          onChange={(e) =>
+            setFormCourse((f) => ({
+              ...f,
+              level: e.target.value,
+            }))
+          }
         >
           {LEVELS.map((lv) => (
             <option key={lv} value={lv}>
@@ -943,13 +1159,15 @@ function CourseForm({
           required
           className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500 bg-white"
           value={formCourse.category}
-          onChange={(e) =>
-            setFormCourse((f: any) => ({
+          onChange={(e) => {
+            const newCat = e.target.value;
+            const firstSub = CATEGORY_MAP[newCat]?.[0] ?? "";
+            setFormCourse((f) => ({
               ...f,
-              category: e.target.value,
-              subCategory: (CATEGORY_MAP as any)[e.target.value]?.[0] ?? "",
-            }))
-          }
+              category: newCat,
+              subCategory: firstSub,
+            }));
+          }}
         >
           {CATEGORY_LIST.map((cat) => (
             <option key={cat} value={cat}>
@@ -964,7 +1182,12 @@ function CourseForm({
           required
           className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500 bg-white"
           value={formCourse.subCategory}
-          onChange={(e) => setFormCourse((f: any) => ({ ...f, subCategory: e.target.value }))}
+          onChange={(e) =>
+            setFormCourse((f) => ({
+              ...f,
+              subCategory: e.target.value,
+            }))
+          }
         >
           {subOptions.map((sub) => (
             <option key={sub} value={sub}>
@@ -982,7 +1205,12 @@ function CourseForm({
           max="5"
           className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
           value={formCourse.rating}
-          onChange={(e) => setFormCourse((f: any) => ({ ...f, rating: e.target.value }))}
+          onChange={(e) =>
+            setFormCourse((f) => ({
+              ...f,
+              rating: e.target.value,
+            }))
+          }
         />
       </Field>
 
@@ -992,7 +1220,12 @@ function CourseForm({
           min="0"
           className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
           value={formCourse.students}
-          onChange={(e) => setFormCourse((f: any) => ({ ...f, students: e.target.value }))}
+          onChange={(e) =>
+            setFormCourse((f) => ({
+              ...f,
+              students: e.target.value,
+            }))
+          }
         />
       </Field>
 
@@ -1003,7 +1236,12 @@ function CourseForm({
             required
             className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500 min-h-[100px]"
             value={formCourse.desc}
-            onChange={(e) => setFormCourse((f: any) => ({ ...f, desc: e.target.value }))}
+            onChange={(e) =>
+              setFormCourse((f) => ({
+                ...f,
+                desc: e.target.value,
+              }))
+            }
           />
         </Field>
       </div>
@@ -1017,15 +1255,28 @@ function CourseForm({
           <input
             className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
             value={formCourse.perks}
-            onChange={(e) => setFormCourse((f: any) => ({ ...f, perks: e.target.value }))}
+            onChange={(e) =>
+              setFormCourse((f) => ({
+                ...f,
+                perks: e.target.value,
+              }))
+            }
           />
         </Field>
       </div>
 
       {/* Syllabus Builder */}
       <div className="md:col-span-2">
-        <Field label="Syllabus" required hint="Add sections and topics. At least one section title is required.">
-          <SyllabusBuilder value={syllabusCourse} onChange={setSyllabusCourse} required />
+        <Field
+          label="Syllabus"
+          required
+          hint="Add sections and topics. At least one section title is required."
+        >
+          <SyllabusBuilder
+            value={syllabusCourse}
+            onChange={setSyllabusCourse}
+            required
+          />
         </Field>
       </div>
 
@@ -1036,7 +1287,11 @@ function CourseForm({
             <div className="text-sm font-medium mb-2">Image Preview</div>
             <div className="aspect-[16/9] rounded-xl border bg-gray-50 flex items-center justify-center overflow-hidden">
               {livePreview ? (
-                <img src={formCourse.cover} className="h-full w-full object-cover" alt="preview" />
+                <img
+                  src={formCourse.cover}
+                  className="h-full w-full object-cover"
+                  alt="preview"
+                />
               ) : (
                 <div className="text-gray-400 text-sm flex items-center gap-2">
                   <Images size={18} /> Enter URL or upload
@@ -1050,12 +1305,18 @@ function CourseForm({
             <div className="rounded-xl border bg-white p-4 shadow-sm">
               <div className="flex items-center gap-3">
                 <img
-                  src={livePreview ? formCourse.cover : "/assets/images/thumbnails/ai.png"}
+                  src={
+                    livePreview
+                      ? formCourse.cover
+                      : "/assets/images/thumbnails/ai.png"
+                  }
                   className="h-14 w-24 rounded-md object-cover border"
                   alt=""
                 />
                 <div className="min-w-0">
-                  <div className="font-semibold truncate">{formCourse.title || "Untitled course"}</div>
+                  <div className="font-semibold truncate">
+                    {formCourse.title || "Untitled course"}
+                  </div>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-600">
                     <span className="inline-flex items-center gap-1">
                       <Clock size={14} /> {formCourse.duration || "—"}
@@ -1063,7 +1324,8 @@ function CourseForm({
                     <Pill tone="orange">{formCourse.level}</Pill>
                     {!!formCourse.rating && (
                       <span className="inline-flex items-center gap-1">
-                        <Star size={14} className="text-yellow-500" /> {formCourse.rating}
+                        <Star size={14} className="text-yellow-500" />{" "}
+                        {formCourse.rating}
                       </span>
                     )}
                     {!!formCourse.students && (
@@ -1071,7 +1333,11 @@ function CourseForm({
                         <UserRound size={14} /> {formCourse.students}
                       </span>
                     )}
-                    {syllabusCourse?.length ? <Pill tone="green">{syllabusCourse.length} sections</Pill> : null}
+                    {syllabusCourse?.length ? (
+                      <Pill tone="green">
+                        {syllabusCourse.length} sections
+                      </Pill>
+                    ) : null}
                   </div>
 
                   <p className="mt-2 line-clamp-2 text-sm text-gray-600">
@@ -1111,7 +1377,13 @@ function CourseForm({
           disabled={submitting}
           className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60"
         >
-          {submitting ? <Loader2 className="animate-spin" size={16} /> : (isEdit ? <Pencil size={16} /> : <Plus size={16} />)}
+          {submitting ? (
+            <Loader2 className="animate-spin" size={16} />
+          ) : isEdit ? (
+            <Pencil size={16} />
+          ) : (
+            <Plus size={16} />
+          )}
           {isEdit ? "Save changes" : "Create"}
         </button>
       </div>
@@ -1140,7 +1412,9 @@ function Modal({
     if (!open) return;
     const orig = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = orig;

@@ -13,9 +13,14 @@ function isValidId(id: string) {
   return mongoose.Types.ObjectId.isValid(id);
 }
 
-function cleanArray(a: any): string[] | undefined {
+function cleanArray(a: unknown): string[] | undefined {
   if (a == null) return undefined;
-  if (Array.isArray(a)) return a.map(String).map((s) => s.trim()).filter(Boolean);
+  if (Array.isArray(a)) {
+    return a
+      .map((v) => String(v))
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
   if (typeof a === "string") {
     return a
       .split(",")
@@ -25,39 +30,59 @@ function cleanArray(a: any): string[] | undefined {
   return undefined;
 }
 
-function cleanSyllabus(input: any) {
-  if (!input) return undefined;
-  let arr: any[] | undefined;
+type SyllabusItem = {
+  title: string;
+  items?: string[];
+};
+
+function cleanSyllabus(input: unknown): SyllabusItem[] | undefined {
+  if (input == null) return undefined;
+
+  let arr: unknown[] | undefined;
   try {
-    if (typeof input === "string") arr = JSON.parse(input);
-    else if (Array.isArray(input)) arr = input;
+    if (typeof input === "string") {
+      arr = JSON.parse(input) as unknown[];
+    } else if (Array.isArray(input)) {
+      arr = input;
+    }
   } catch {
     arr = undefined;
   }
+
   if (!Array.isArray(arr)) return undefined;
-  const out = arr
+
+  const out: SyllabusItem[] = arr
     .map((sec) => {
       if (!sec || typeof sec !== "object") return null;
-      const title = typeof sec.title === "string" ? sec.title.trim() : "";
+
+      const section = sec as { title?: unknown; items?: unknown };
+
+      const title =
+        typeof section.title === "string" ? section.title.trim() : "";
       if (!title) return null;
+
       let items: string[] | undefined;
-      if (Array.isArray(sec.items)) {
-        items = sec.items.map((x: any) => String(x).trim()).filter(Boolean);
+      if (Array.isArray(section.items)) {
+        items = section.items
+          .map((x) => String(x).trim())
+          .filter(Boolean);
       }
-      return { title, ...(items && { items }) };
+
+      return items && items.length > 0 ? { title, items } : { title };
     })
-    .filter(Boolean);
+    .filter((v): v is SyllabusItem => v !== null);
+
   return out.length ? out : undefined;
 }
 
-function clampRating(n: any) {
+function clampRating(n: unknown): number | undefined {
   if (n === undefined || n === null) return undefined;
   const num = Number(n);
   if (!Number.isFinite(num)) return undefined;
   return Math.max(0, Math.min(5, num));
 }
 
-function safeNonNegInt(n: any) {
+function safeNonNegInt(n: unknown): number | undefined {
   if (n === undefined || n === null) return undefined;
   const num = Number(n);
   if (!Number.isFinite(num) || num < 0) return undefined;
@@ -81,6 +106,20 @@ class ResponseError extends Error {
   }
 }
 
+type PartialCourseUpdate = {
+  title?: unknown;
+  cover?: unknown;
+  duration?: unknown;
+  level?: unknown;
+  category?: unknown;
+  subCategory?: unknown;
+  rating?: unknown;
+  students?: unknown;
+  desc?: unknown;
+  perks?: unknown;
+  syllabus?: unknown;
+};
+
 /* =========================
    GET /api/courses/[id]
 ========================= */
@@ -95,11 +134,15 @@ export async function GET(_req: NextRequest, { params }: Params) {
   try {
     // include virtuals (e.g., href from slug)
     const doc = await Course.findById(id).lean({ virtuals: true });
-    if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!doc) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     return NextResponse.json(doc);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("GET /api/course/courses/[id] error:", e);
-    return NextResponse.json({ error: e?.message || "Failed to load course" }, { status: 500 });
+    const message =
+      e instanceof Error ? e.message : "Failed to load course";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -117,11 +160,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
 
-  const body = await req.json().catch(() => ({} as any));
+  const body = (await req.json().catch(() => ({}))) as PartialCourseUpdate;
 
   try {
     const doc = await Course.findById(id);
-    if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!doc) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
     // Validate required fields *if* they are being changed
     assertNotBlankOrUndefined("title", body.title);
@@ -137,39 +182,60 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (body.duration !== undefined) doc.duration = String(body.duration).trim();
     if (body.level !== undefined) doc.level = String(body.level).trim();
     if (body.category !== undefined) doc.category = String(body.category).trim();
-    if (body.subCategory !== undefined) doc.subCategory = String(body.subCategory).trim();
+    if (body.subCategory !== undefined) {
+      doc.subCategory = String(body.subCategory).trim();
+    }
 
     // Optional numeric fields
-    if (body.rating !== undefined) doc.rating = clampRating(body.rating) as any;
-    if (body.students !== undefined) doc.students = safeNonNegInt(body.students) as any;
+    if (body.rating !== undefined) {
+      doc.rating = clampRating(body.rating);
+    }
+    if (body.students !== undefined) {
+      doc.students = safeNonNegInt(body.students);
+    }
 
     // Text field (unset when blank)
     if (body.desc !== undefined) {
-      const d = typeof body.desc === "string" ? body.desc.trim() : undefined;
+      const d =
+        typeof body.desc === "string" ? body.desc.trim() : undefined;
       doc.desc = d || undefined;
     }
 
     // Arrays / nested
-    if (body.perks !== undefined) doc.perks = cleanArray(body.perks);
-    if (body.syllabus !== undefined) doc.syllabus = cleanSyllabus(body.syllabus);
+    if (body.perks !== undefined) {
+      doc.perks = cleanArray(body.perks);
+    }
+    if (body.syllabus !== undefined) {
+      doc.syllabus = cleanSyllabus(body.syllabus);
+    }
 
     // Save so model hooks (e.g., slug generation from title) run
     const updated = await doc.save();
     // Ensure virtuals in response regardless of schema settings
     return NextResponse.json(updated.toObject({ virtuals: true }));
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("PATCH /api/course/courses/[id] error:", e);
+
     if (e instanceof ResponseError) {
       return NextResponse.json({ error: e.message }, { status: e.status });
     }
+
     // Duplicate key (likely slug/title unique)
-    if (e?.code === 11000) {
+    if (
+      typeof e === "object" &&
+      e !== null &&
+      "code" in e &&
+      (e as { code?: unknown }).code === 11000
+    ) {
       return NextResponse.json(
         { error: "A course with a similar title already exists." },
-        { status: 409 }
+        { status: 409 },
       );
     }
-    return NextResponse.json({ error: e?.message || "Update failed" }, { status: 500 });
+
+    const message =
+      e instanceof Error ? e.message : "Update failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -186,10 +252,14 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
   try {
     const deleted = await Course.findByIdAndDelete(id);
-    if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!deleted) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     return new NextResponse(null, { status: 204 });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("DELETE /api/course/courses/[id] error:", e);
-    return NextResponse.json({ error: e?.message || "Delete failed" }, { status: 500 });
+    const message =
+      e instanceof Error ? e.message : "Delete failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,7 +1,14 @@
+/* eslint-disable @next/next/no-img-element */
 // components/admin/courses/skill/SkillPathsAdmin.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
@@ -48,6 +55,18 @@ interface SkillPath {
 type ToastState =
   | { show: false }
   | { show: true; type: "success" | "error" | "info"; msg: string };
+
+interface SkillPathFormState {
+  name: string;
+  img: string;
+  desc: string;
+  duration: string;
+  skills: string;
+  rating: string;
+  students: string;
+  level: string;
+  perks: string;
+}
 
 /* =========================
    Constants
@@ -148,6 +167,11 @@ function SkeletonRow() {
 /* =========================
    Tiny Uploader (URL + Local Upload)
 ========================= */
+type UploadResponse = {
+  url?: string;
+  error?: string;
+};
+
 function UrlOrUpload({
   value,
   onChange,
@@ -175,20 +199,31 @@ function UrlOrUpload({
 
       const ct = res.headers.get("content-type") || "";
       const isJson = ct.toLowerCase().includes("application/json");
-      const data = isJson ? await res.json() : { error: await res.text() };
 
-      if (!res.ok || !isJson) {
-        const msg =
-          (isJson ? (data as any)?.error : undefined) ||
-          (typeof data === "string" ? data.slice(0, 200) : "") ||
-          `Upload failed (${res.status})`;
-        throw new Error(msg);
+      let dataJson: UploadResponse | null = null;
+      let dataText = "";
+
+      if (isJson) {
+        dataJson = (await res.json().catch(() => null)) as UploadResponse | null;
+      } else {
+        dataText = await res.text();
       }
 
-      if (!(data as any)?.url) throw new Error("Upload did not return a URL");
-      onChange(String((data as any).url));
-    } catch (e: any) {
-      setErr(e?.message || "Upload failed");
+      if (!res.ok || !isJson || !dataJson) {
+        let msg: string | undefined;
+        if (dataJson && typeof dataJson.error === "string") {
+          msg = dataJson.error;
+        } else if (dataText) {
+          msg = dataText.slice(0, 200);
+        }
+        throw new Error(msg || `Upload failed (${res.status})`);
+      }
+
+      if (!dataJson.url) throw new Error("Upload did not return a URL");
+      onChange(String(dataJson.url));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Upload failed";
+      setErr(msg);
     } finally {
       setUploading(false);
     }
@@ -220,7 +255,7 @@ function UrlOrUpload({
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
-            if (f) handleFile(f);
+            if (f) void handleFile(f);
           }}
         />
       </label>
@@ -362,23 +397,27 @@ function SyllabusBuilder({
 ========================= */
 async function safeJson<T>(res: Response, fallback: T): Promise<T> {
   try {
-    if (!res) return fallback as T;
-    if (res.status === 204) return fallback as T;
+    if (!res) return fallback;
+    if (res.status === 204) return fallback;
     const ct = res.headers.get("content-type") || "";
-    if (!ct.toLowerCase().includes("application/json")) return fallback as T;
+    if (!ct.toLowerCase().includes("application/json")) return fallback;
     return (await res.json()) as T;
   } catch {
-    return fallback as T;
+    return fallback;
   }
 }
 
-async function getList<T = any>(url: string): Promise<T[]> {
+async function getList<T = unknown>(url: string): Promise<T[]> {
   try {
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return [];
-    const json = await safeJson<any>(res, {} as any);
-    const items = Array.isArray(json) ? json : json?.data ?? json?.items;
-    return Array.isArray(items) ? items : [];
+    const json = await safeJson<unknown>(res, {});
+    let items: unknown = json;
+    if (!Array.isArray(items) && typeof items === "object" && items !== null) {
+      const obj = items as { data?: unknown; items?: unknown };
+      items = obj.data ?? obj.items ?? [];
+    }
+    return Array.isArray(items) ? (items as T[]) : [];
   } catch {
     return [];
   }
@@ -404,18 +443,8 @@ function SkillPathForm({
   onSubmit,
   isEdit = false,
 }: {
-  formPath: {
-    name: string;
-    img: string;
-    desc: string;
-    duration: string;
-    skills: string;
-    rating: string;
-    students: string;
-    level: string;
-    perks: string;
-  };
-  setFormPath: React.Dispatch<React.SetStateAction<any>>;
+  formPath: SkillPathFormState;
+  setFormPath: Dispatch<SetStateAction<SkillPathFormState>>;
   syllabusPath: SyllabusSection[];
   setSyllabusPath: (next: SyllabusSection[]) => void;
   submitting: boolean;
@@ -424,7 +453,8 @@ function SkillPathForm({
   isEdit?: boolean;
 }) {
   const livePreview =
-    (formPath.img && (formPath.img.startsWith("/") || formPath.img.startsWith("http"))) || false;
+    (formPath.img && (formPath.img.startsWith("/") || formPath.img.startsWith("http"))) ||
+    false;
   const perksPreview = parseCommaList(formPath.perks).slice(0, 3);
 
   return (
@@ -434,7 +464,12 @@ function SkillPathForm({
           required
           className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
           value={formPath.name}
-          onChange={(e) => setFormPath((f: any) => ({ ...f, name: e.target.value }))}
+          onChange={(e) =>
+            setFormPath((f) => ({
+              ...f,
+              name: e.target.value,
+            }))
+          }
         />
       </Field>
 
@@ -442,7 +477,12 @@ function SkillPathForm({
         <UrlOrUpload
           required
           value={formPath.img}
-          onChange={(url) => setFormPath((f: any) => ({ ...f, img: url }))}
+          onChange={(url) =>
+            setFormPath((f) => ({
+              ...f,
+              img: url,
+            }))
+          }
           placeholder="click to upload or enter image URL"
           buttonLabel="Upload image"
         />
@@ -453,7 +493,12 @@ function SkillPathForm({
           required
           className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
           value={formPath.duration}
-          onChange={(e) => setFormPath((f: any) => ({ ...f, duration: e.target.value }))}
+          onChange={(e) =>
+            setFormPath((f) => ({
+              ...f,
+              duration: e.target.value,
+            }))
+          }
         />
       </Field>
 
@@ -462,7 +507,12 @@ function SkillPathForm({
           required
           className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500 bg-white"
           value={formPath.level}
-          onChange={(e) => setFormPath((f: any) => ({ ...f, level: e.target.value }))}
+          onChange={(e) =>
+            setFormPath((f) => ({
+              ...f,
+              level: e.target.value,
+            }))
+          }
         >
           {LEVELS.map((lv) => (
             <option key={lv} value={lv}>
@@ -476,7 +526,12 @@ function SkillPathForm({
         <input
           className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
           value={formPath.skills}
-          onChange={(e) => setFormPath((f: any) => ({ ...f, skills: e.target.value }))}
+          onChange={(e) =>
+            setFormPath((f) => ({
+              ...f,
+              skills: e.target.value,
+            }))
+          }
         />
       </Field>
 
@@ -488,7 +543,12 @@ function SkillPathForm({
           max="5"
           className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
           value={formPath.rating}
-          onChange={(e) => setFormPath((f: any) => ({ ...f, rating: e.target.value }))}
+          onChange={(e) =>
+            setFormPath((f) => ({
+              ...f,
+              rating: e.target.value,
+            }))
+          }
         />
       </Field>
 
@@ -498,7 +558,12 @@ function SkillPathForm({
           min="0"
           className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
           value={formPath.students}
-          onChange={(e) => setFormPath((f: any) => ({ ...f, students: e.target.value }))}
+          onChange={(e) =>
+            setFormPath((f) => ({
+              ...f,
+              students: e.target.value,
+            }))
+          }
         />
       </Field>
 
@@ -508,7 +573,12 @@ function SkillPathForm({
             required
             className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500 min-h-[100px]"
             value={formPath.desc}
-            onChange={(e) => setFormPath((f: any) => ({ ...f, desc: e.target.value }))}
+            onChange={(e) =>
+              setFormPath((f) => ({
+                ...f,
+                desc: e.target.value,
+              }))
+            }
           />
         </Field>
       </div>
@@ -521,14 +591,23 @@ function SkillPathForm({
           <input
             className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
             value={formPath.perks}
-            onChange={(e) => setFormPath((f: any) => ({ ...f, perks: e.target.value }))}
+            onChange={(e) =>
+              setFormPath((f) => ({
+                ...f,
+                perks: e.target.value,
+              }))
+            }
           />
         </Field>
       </div>
 
       {/* Syllabus Builder */}
       <div className="md:col-span-2">
-        <Field label="Syllabus" required hint="Add sections and topics. At least one section title is required.">
+        <Field
+          label="Syllabus"
+          required
+          hint="Add sections and topics. At least one section title is required."
+        >
           <SyllabusBuilder value={syllabusPath} onChange={setSyllabusPath} required />
         </Field>
       </div>
@@ -563,7 +642,9 @@ function SkillPathForm({
                   }}
                 />
                 <div className="min-w-0">
-                  <div className="font-semibold truncate">{formPath.name || "Untitled path"}</div>
+                  <div className="font-semibold truncate">
+                    {formPath.name || "Untitled path"}
+                  </div>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-600">
                     <span className="inline-flex items-center gap-1">
                       <Clock size={14} /> {formPath.duration || "—"}
@@ -571,7 +652,8 @@ function SkillPathForm({
                     <Pill tone="orange">{formPath.level}</Pill>
                     {!!formPath.rating && (
                       <span className="inline-flex items-center gap-1">
-                        <Star size={14} className="text-yellow-500" /> {formPath.rating}
+                        <Star size={14} className="text-yellow-500" />{" "}
+                        {formPath.rating}
                       </span>
                     )}
                     {!!formPath.students && (
@@ -579,7 +661,9 @@ function SkillPathForm({
                         <UserRound size={14} /> {formPath.students}
                       </span>
                     )}
-                    {syllabusPath?.length ? <Pill tone="green">{syllabusPath.length} sections</Pill> : null}
+                    {syllabusPath?.length ? (
+                      <Pill tone="green">{syllabusPath.length} sections</Pill>
+                    ) : null}
                   </div>
 
                   <p className="mt-2 line-clamp-2 text-sm text-gray-600">
@@ -615,7 +699,13 @@ function SkillPathForm({
           disabled={submitting}
           className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60"
         >
-          {submitting ? <Loader2 className="animate-spin" size={16} /> : isEdit ? <Pencil size={16} /> : <Plus size={16} />}
+          {submitting ? (
+            <Loader2 className="animate-spin" size={16} />
+          ) : isEdit ? (
+            <Pencil size={16} />
+          ) : (
+            <Plus size={16} />
+          )}
           {isEdit ? "Save changes" : "Create"}
         </button>
       </div>
@@ -645,9 +735,11 @@ export default function SkillPathsAdmin() {
 
   // Delete confirm
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(
+    null
+  );
 
-  const [formPath, setFormPath] = useState({
+  const [formPath, setFormPath] = useState<SkillPathFormState>({
     name: "",
     img: "",
     desc: "",
@@ -677,6 +769,7 @@ export default function SkillPathsAdmin() {
     return () => {
       mounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const query = q.trim().toLowerCase();
@@ -771,19 +864,35 @@ export default function SkillPathsAdmin() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j?.error || j?.message || "Create failed");
+
+      const data = await safeJson<
+        (SkillPath & { error?: unknown; message?: unknown }) | {
+          error?: unknown;
+          message?: unknown;
+        } | null
+      >(res, null);
+
+      if (!res.ok || !data || !(data as SkillPath)._id) {
+        const maybeErr = data as { error?: unknown; message?: unknown } | null;
+        let msg = "Create failed";
+        if (maybeErr && typeof maybeErr.error === "string") msg = maybeErr.error;
+        else if (maybeErr && typeof maybeErr.message === "string")
+          msg = maybeErr.message;
+        throw new Error(msg);
       }
-      const created = await safeJson<SkillPath>(res, null as any);
-      if (created?._id) setSkill((p) => [created, ...p]);
+
+      const created = data as SkillPath;
+
+      if (created._id) setSkill((p) => [created, ...p]);
       else setSkill(await getList<SkillPath>("/api/course/skillpaths"));
+
       showToast("Skill Path added", "success");
       setOpenCreate(false);
       resetForms();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      showToast(err?.message || "Server error", "error");
+      const msg = err instanceof Error ? err.message : "Server error";
+      showToast(msg, "error");
     } finally {
       setCreating(false);
     }
@@ -796,7 +905,7 @@ export default function SkillPathsAdmin() {
     setEditLoading(true);
     try {
       const res = await fetch(`/api/course/skillpaths/${id}`, { cache: "no-store" });
-      const doc = await safeJson<SkillPath>(res, null as any);
+      const doc = await safeJson<SkillPath | null>(res, null);
       if (!res.ok || !doc?._id) throw new Error("Failed to load skill path");
 
       setFormPath({
@@ -807,7 +916,7 @@ export default function SkillPathsAdmin() {
         skills: Array.isArray(doc.skills) ? doc.skills.join(", ") : "",
         rating: doc.rating != null ? String(doc.rating) : "",
         students: doc.students != null ? String(doc.students) : "",
-        level: (doc.level as any) || "Beginner",
+        level: doc.level || "Beginner",
         perks: Array.isArray(doc.perks) ? doc.perks.join(", ") : "",
       });
       setSyllabusPath(Array.isArray(doc.syllabus) ? doc.syllabus : []);
@@ -858,20 +967,36 @@ export default function SkillPathsAdmin() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const updated = await safeJson<SkillPath>(res, null as any);
-      if (!res.ok || !updated?._id) {
-        const j = updated as any;
-        throw new Error(j?.error || j?.message || "Update failed");
+
+      const data = await safeJson<
+        (SkillPath & { error?: unknown; message?: unknown }) | {
+          error?: unknown;
+          message?: unknown;
+        } | null
+      >(res, null);
+
+      if (!res.ok || !data || !(data as SkillPath)._id) {
+        const maybeErr = data as { error?: unknown; message?: unknown } | null;
+        let msg = "Update failed";
+        if (maybeErr && typeof maybeErr.error === "string") msg = maybeErr.error;
+        else if (maybeErr && typeof maybeErr.message === "string")
+          msg = maybeErr.message;
+        throw new Error(msg);
       }
 
-      setSkill((prev) => prev.map((c) => (c._id === updated._id ? { ...c, ...updated } : c)));
+      const updated = data as SkillPath;
+
+      setSkill((prev) =>
+        prev.map((c) => (c._id === updated._id ? { ...c, ...updated } : c))
+      );
       showToast("Skill Path updated", "success");
       setOpenEdit(false);
       setEditingId(null);
       resetForms();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      showToast(err?.message || "Server error", "error");
+      const msg = err instanceof Error ? err.message : "Server error";
+      showToast(msg, "error");
     } finally {
       setEditing(false);
     }
@@ -880,8 +1005,14 @@ export default function SkillPathsAdmin() {
   function RowSkill({ item }: { item: SkillPath }) {
     const rating = (item.rating ?? 0).toFixed(1);
     const students = (item.students ?? 0).toLocaleString();
-    const levelTone = item.level === "Advanced" ? "amber" : item.level === "Intermediate" ? "blue" : "green";
-    const linkHref = item.href || (item.slug ? `/course/skillpath/${item.slug}` : undefined);
+    const levelTone: "green" | "blue" | "amber" =
+      item.level === "Advanced"
+        ? "amber"
+        : item.level === "Intermediate"
+        ? "blue"
+        : "green";
+    const linkHref =
+      item.href || (item.slug ? `/course/skillpath/${item.slug}` : undefined);
 
     return (
       <tr className="hover:bg-gray-50">
@@ -927,7 +1058,7 @@ export default function SkillPathsAdmin() {
           </div>
         </td>
         <td className="px-4 py-4">
-          <Pill tone={levelTone as any}>{item.level || "Beginner"}</Pill>
+          <Pill tone={levelTone}>{item.level || "Beginner"}</Pill>
         </td>
         <td className="px-4 py-4">
           <div className="inline-flex items-center gap-1 text-sm text-gray-700">
@@ -958,9 +1089,6 @@ export default function SkillPathsAdmin() {
       </tr>
     );
   }
-
-  const livePreview =
-    (formPath.img && (formPath.img.startsWith("/") || formPath.img.startsWith("http"))) || false;
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -1132,7 +1260,8 @@ export default function SkillPathsAdmin() {
       <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Confirm Deletion">
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
-            Are you sure you want to delete <span className="font-semibold">{deleteTarget?.name}</span>? This action
+            Are you sure you want to delete{" "}
+            <span className="font-semibold">{deleteTarget?.name}</span>? This action
             cannot be undone.
           </p>
         </div>

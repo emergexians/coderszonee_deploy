@@ -1,4 +1,4 @@
-// app/auth/signin/page.tsx
+// app/auth/signin/page.tsx 
 "use client";
 
 import { useState, type KeyboardEvent, type ComponentType } from "react";
@@ -10,7 +10,6 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Github,
   ChevronLeft,
   ChevronRight,
   Shield,
@@ -73,15 +72,11 @@ export default function SignInPage() {
       }
 
       if (!res.ok) {
-        const msg =
-          j?.error ||
-          j?.message ||
-          "Sign in failed";
+        const msg = j?.error || j?.message || "Sign in failed";
         throw new Error(msg);
       }
 
-      const rawRole =
-        j?.user?.role ?? j?.role ?? role;
+      const rawRole = j?.user?.role ?? j?.role ?? role;
 
       const apiRole: Role =
         rawRole === "admin" || rawRole === "instructor" || rawRole === "student"

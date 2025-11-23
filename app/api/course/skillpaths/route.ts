@@ -19,16 +19,19 @@ function slugify(input: string) {
 }
 
 /** Make slug unique across collection */
-async function ensureUniqueSlug(base: string, excludeId?: any) {
+async function ensureUniqueSlug(base: string, excludeId?: string): Promise<string> {
   let candidate = base || "item";
   let i = 2;
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    // @ts-ignore - mongoose type inference is noisy here
-    const exists = await SkillPath.exists(
-      excludeId ? { slug: candidate, _id: { $ne: excludeId } } : { slug: candidate }
-    );
+
+  // Loop until we find a candidate slug that doesn't exist
+  for (;;) {
+    const filter = excludeId
+      ? { slug: candidate, _id: { $ne: excludeId } }
+      : { slug: candidate };
+
+    const exists = await SkillPath.exists(filter);
     if (!exists) return candidate;
+
     candidate = `${base}-${i++}`;
   }
 }
@@ -58,46 +61,82 @@ const Payload = z
 
 function formatZod(err: z.ZodError) {
   const fe = err.flatten();
-  const fieldMsgs = Object.entries(fe.fieldErrors).flatMap(([k, v]) => (v || []).map((m) => `${k}: ${m}`));
+  const fieldMsgs = Object.entries(fe.fieldErrors).flatMap(([k, v]) =>
+    (v || []).map((m) => `${k}: ${m}`),
+  );
   return [...fieldMsgs, ...(fe.formErrors || [])].join("; ") || "Invalid request";
 }
 
 export async function GET() {
   try {
     await dbConnect();
-    const list = await SkillPath.find().sort({ createdAt: -1 }).lean({ virtuals: true });
-    return NextResponse.json(list, { headers: { "cache-control": "no-store" } });
-  } catch (err) {
-    console.error("[akillpaths][GET]", err);
-    return NextResponse.json({ error: "Failed to fetch skill paths" }, { status: 500 });
+    const list = await SkillPath.find()
+      .sort({ createdAt: -1 })
+      .lean({ virtuals: true });
+    return NextResponse.json(list, {
+      headers: { "cache-control": "no-store" },
+    });
+  } catch (err: unknown) {
+    console.error("[skillpaths][GET]", err);
+    return NextResponse.json(
+      { error: "Failed to fetch skill paths" },
+      { status: 500 },
+    );
   }
 }
+
+// loose shape for incoming body that we normalize
+type SkillPathInput = {
+  skills?: string | string[];
+  perks?: string | string[];
+  rating?: string | number;
+  students?: string | number;
+  [key: string]: unknown;
+};
 
 export async function POST(req: Request) {
   try {
     await dbConnect();
-    const raw = await req.json();
+    const raw = (await req.json()) as Record<string, unknown>;
+    const norm: SkillPathInput = { ...raw };
 
     // Normalize common client shapes (strings -> arrays/numbers)
-    const norm: any = { ...raw };
     if (typeof norm.skills === "string") {
-      norm.skills = norm.skills.split(",").map((s: string) => s.trim()).filter(Boolean);
+      norm.skills = norm.skills
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
     }
     if (typeof norm.perks === "string") {
-      norm.perks = norm.perks.split(",").map((s: string) => s.trim()).filter(Boolean);
+      norm.perks = norm.perks
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
     }
-    if (typeof norm.rating === "string" && norm.rating !== "") norm.rating = Number(norm.rating);
-    if (typeof norm.students === "string" && norm.students !== "") norm.students = Number(norm.students);
+    if (typeof norm.rating === "string" && norm.rating !== "") {
+      norm.rating = Number(norm.rating);
+    }
+    if (typeof norm.students === "string" && norm.students !== "") {
+      norm.students = Number(norm.students);
+    }
 
     // Validate base fields
     const parsed = Payload.safeParse(norm);
     if (!parsed.success) {
-      return NextResponse.json({ error: formatZod(parsed.error) }, { status: 400 });
+      return NextResponse.json(
+        { error: formatZod(parsed.error) },
+        { status: 400 },
+      );
     }
 
     // Derive slug & href (satisfies schemas that require them)
     const base = slugify(parsed.data.name);
-    if (!base) return NextResponse.json({ error: "Name cannot be empty" }, { status: 400 });
+    if (!base) {
+      return NextResponse.json(
+        { error: "Name cannot be empty" },
+        { status: 400 },
+      );
+    }
     const slug = await ensureUniqueSlug(base);
     const href = `/skillpath/${slug}`;
 
@@ -105,15 +144,33 @@ export async function POST(req: Request) {
     const toCreate = { ...parsed.data, slug, href };
 
     const created = await SkillPath.create(toCreate);
-    const createdFull = await SkillPath.findById(created._id).lean({ virtuals: true });
+    const createdFull = await SkillPath.findById(created._id).lean({
+      virtuals: true,
+    });
     return NextResponse.json(createdFull, { status: 201 });
-  } catch (err: any) {
-    if (err?.code === 11000) {
-      const keys = Object.keys(err.keyPattern || err.keyValue || {});
+  } catch (err: unknown) {
+    // handle duplicate key error (code 11000)
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code?: unknown }).code === 11000
+    ) {
+      const dupErr = err as {
+        keyPattern?: Record<string, unknown>;
+        keyValue?: Record<string, unknown>;
+      };
+      const keys = Object.keys(dupErr.keyPattern ?? dupErr.keyValue ?? {});
       const keyStr = keys.length ? ` (${keys.join(", ")})` : "";
-      return NextResponse.json({ error: `Duplicate value${keyStr}. Try a different name.` }, { status: 409 });
+      return NextResponse.json(
+        { error: `Duplicate value${keyStr}. Try a different name.` },
+        { status: 409 },
+      );
     }
+
     console.error("[skillpaths][POST]", err);
-    return NextResponse.json({ error: err?.message || "Create failed" }, { status: 500 });
+    const message =
+      err instanceof Error ? err.message : "Create failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

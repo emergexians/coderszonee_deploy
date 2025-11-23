@@ -1,7 +1,7 @@
 // app/api/course/courses/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
-import { Course } from "@/models/courses/Course"; // <-- named import
+import { Course } from "@/models/courses/Course";
 
 function parseIntOr(defaultVal: number, v?: string | null) {
   const n = Number(v);
@@ -14,7 +14,12 @@ function clamp(n: number, min: number, max: number) {
 
 function cleanArray(a: unknown): string[] | undefined {
   if (!a) return undefined;
-  if (Array.isArray(a)) return a.map(String).map((s) => s.trim()).filter(Boolean);
+  if (Array.isArray(a)) {
+    return a
+      .map((v) => String(v))
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
   if (typeof a === "string") {
     return a
       .split(",")
@@ -24,29 +29,47 @@ function cleanArray(a: unknown): string[] | undefined {
   return undefined;
 }
 
-function cleanSyllabus(input: unknown) {
+type SyllabusSection = {
+  title: string;
+  items?: string[];
+};
+
+function cleanSyllabus(input: unknown): SyllabusSection[] | undefined {
   if (!input) return undefined;
-  let arr: any[] | undefined;
+
+  let arr: unknown[] | undefined;
   try {
-    if (typeof input === "string") arr = JSON.parse(input);
-    else if (Array.isArray(input)) arr = input as any[];
+    if (typeof input === "string") {
+      arr = JSON.parse(input) as unknown[];
+    } else if (Array.isArray(input)) {
+      arr = input as unknown[];
+    }
   } catch {
     arr = undefined;
   }
+
   if (!Array.isArray(arr)) return undefined;
 
-  const out = arr
+  const out: SyllabusSection[] = arr
     .map((sec) => {
       if (!sec || typeof sec !== "object") return null;
-      const title = typeof (sec as any).title === "string" ? (sec as any).title.trim() : "";
+
+      const section = sec as { title?: unknown; items?: unknown };
+
+      const title =
+        typeof section.title === "string" ? section.title.trim() : "";
       if (!title) return null;
+
       let items: string[] | undefined;
-      if (Array.isArray((sec as any).items)) {
-        items = (sec as any).items.map((x: unknown) => String(x).trim()).filter(Boolean);
+      if (Array.isArray(section.items)) {
+        items = section.items
+          .map((x) => String(x).trim())
+          .filter(Boolean);
       }
-      return { title, ...(items && { items }) };
+
+      return items && items.length > 0 ? { title, items } : { title };
     })
-    .filter(Boolean) as Array<{ title: string; items?: string[] }>;
+    .filter((v): v is SyllabusSection => v !== null);
 
   return out.length ? out : undefined;
 }
@@ -74,7 +97,7 @@ export async function GET(req: NextRequest) {
     if (level) filter.level = level;
 
     // Safe search (no $text to avoid missing-index errors)
-    const or: any[] = [];
+    const or: Record<string, unknown>[] = [];
     if (q) {
       or.push({ title: { $regex: q, $options: "i" } });
       or.push({ desc: { $regex: q, $options: "i" } });
@@ -82,7 +105,8 @@ export async function GET(req: NextRequest) {
       or.push({ skills: { $elemMatch: { $regex: q, $options: "i" } } });
     }
 
-    const finalQuery = or.length ? { $and: [filter, { $or: or }] } : filter;
+    const finalQuery =
+      or.length > 0 ? { $and: [filter, { $or: or }] } : filter;
 
     const [total, items] = await Promise.all([
       Course.countDocuments(finalQuery),
@@ -94,12 +118,11 @@ export async function GET(req: NextRequest) {
     ]);
 
     return NextResponse.json({ items, total, page, limit });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("GET /api/course/courses error:", e);
-    return NextResponse.json(
-      { error: e?.message || "Failed to load courses" },
-      { status: 500 }
-    );
+    const message =
+      e instanceof Error ? e.message : "Failed to load courses";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -107,35 +130,57 @@ export async function GET(req: NextRequest) {
    POST /api/course/courses
    Body: title, cover, duration, level, category, subCategory, desc, rating?, students?, perks?, syllabus?
 ========================= */
+
+type CoursePayload = {
+  title: string;
+  cover: string;
+  duration: string;
+  level: string;
+  category: string;
+  subCategory: string;
+  rating?: number;
+  students?: number;
+  desc?: string;
+  perks?: string[];
+  syllabus?: SyllabusSection[];
+  // skills?: string[]; // uncomment if schema supports
+};
+
 export async function POST(req: NextRequest) {
   try {
     await dbConnect();
 
-    const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+    const body = (await req.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >;
 
-    // NOTE: href/slug are derived in model (virtuals/hooks). Do not accept from client.
-    const payload: any = {
+    const payload: CoursePayload = {
       title: String(body.title ?? "").trim(),
       cover: String(body.cover ?? "").trim(),
       duration: String(body.duration ?? "").trim(),
       level: String(body.level ?? "Beginner").trim(),
       category: String(body.category ?? "").trim(),
       subCategory: String(body.subCategory ?? "").trim(),
-      // optional
       rating:
-        body.rating === undefined || body.rating === null ? undefined : Number(body.rating),
+        body.rating === undefined || body.rating === null
+          ? undefined
+          : Number(body.rating),
       students:
         body.students === undefined || body.students === null
           ? undefined
           : Number(body.students),
-      desc: typeof body.desc === "string" ? (body.desc as string).trim() : undefined,
+      desc:
+        typeof body.desc === "string"
+          ? (body.desc as string).trim()
+          : undefined,
       perks: cleanArray(body.perks),
       syllabus: cleanSyllabus(body.syllabus),
-      // skills: cleanArray(body.skills), // uncomment if schema has "skills"
+      // skills: cleanArray(body.skills),
     };
 
     // Required (except rating/students)
-    const required = [
+    const required: (keyof CoursePayload)[] = [
       "title",
       "cover",
       "duration",
@@ -143,13 +188,18 @@ export async function POST(req: NextRequest) {
       "category",
       "subCategory",
       "desc",
-    ] as const;
+    ];
 
     for (const k of required) {
-      if (!payload[k]) {
+      const val = payload[k];
+      if (
+        val === undefined ||
+        val === null ||
+        (typeof val === "string" && !val.trim())
+      ) {
         return NextResponse.json(
           { error: `Missing required field: ${k}` },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -168,12 +218,21 @@ export async function POST(req: NextRequest) {
     const doc = await Course.create(payload);
     const json = doc.toObject({ virtuals: true });
     return NextResponse.json(json, { status: 201 });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("POST /api/course/courses error:", e);
-    const message =
-      e?.code === 11000
-        ? "A course with a similar unique field already exists."
-        : e?.message || "Failed to create course";
+
+    const isDupKey =
+      typeof e === "object" &&
+      e !== null &&
+      "code" in e &&
+      (e as { code?: unknown }).code === 11000;
+
+    const message = isDupKey
+      ? "A course with a similar unique field already exists."
+      : e instanceof Error
+      ? e.message
+      : "Failed to create course";
+
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

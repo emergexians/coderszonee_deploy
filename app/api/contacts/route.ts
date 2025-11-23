@@ -13,11 +13,22 @@ function getClientIp(req: Request) {
   return ip || undefined;
 }
 
-const ALLOWED_REASONS = new Set(["support", "partnership", "hiring", "feedback", "other"]);
+type Reason = "support" | "partnership" | "hiring" | "feedback" | "other";
 
-function normalizeReason(v: unknown): "support" | "partnership" | "hiring" | "feedback" | "other" {
-  const s = String(v || "other").toLowerCase().trim();
-  return (ALLOWED_REASONS.has(s) ? s : "other") as any;
+const ALLOWED_REASONS: ReadonlySet<Reason> = new Set<Reason>([
+  "support",
+  "partnership",
+  "hiring",
+  "feedback",
+  "other",
+]);
+
+function normalizeReason(v: unknown): Reason {
+  const s = String(v ?? "other").toLowerCase().trim();
+  if (ALLOWED_REASONS.has(s as Reason)) {
+    return s as Reason;
+  }
+  return "other";
 }
 
 function isPlausibleEmail(email: string) {
@@ -25,44 +36,66 @@ function isPlausibleEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+type ContactBody = {
+  name?: unknown;
+  email?: unknown;
+  phone?: unknown;
+  company?: unknown;
+  reason?: unknown;
+  subject?: unknown;
+  message?: unknown;
+  newsletter?: unknown;
+  consent?: unknown;
+  website?: unknown;
+};
+
 export async function POST(req: Request) {
   try {
     await dbConnect();
-    const body = await req.json().catch(() => ({} as any));
+
+    const body = (await req.json().catch(() => ({}))) as ContactBody;
 
     // Raw values
-    let name = String(body.name || "").trim();
-    let email = String(body.email || "").trim().toLowerCase();
-    let phone = String(body.phone || "").trim();
-    let company = String(body.company || "").trim();
+    let name = String(body.name ?? "").trim();
+    let email = String(body.email ?? "").trim().toLowerCase();
+    let phone = String(body.phone ?? "").trim();
+    let company = String(body.company ?? "").trim();
     const reason = normalizeReason(body.reason);
-    let subject = String(body.subject || "").trim();
-    let message = String(body.message || "").trim();
+    let subject = String(body.subject ?? "").trim();
+    let message = String(body.message ?? "").trim();
     const newsletter = Boolean(body.newsletter);
     const consent = Boolean(body.consent);
-    const honeypot = String(body.website || "").trim(); // hidden field for bots
+    const honeypot = String(body.website ?? "").trim(); // hidden field for bots
 
     // Honeypot: act successful, do nothing
-    if (honeypot) return NextResponse.json({ ok: true }, { status: 200 });
+    if (honeypot) {
+      return NextResponse.json({ ok: true }, { status: 200 });
+    }
 
     // Requireds
     if (!name || !email || !message) {
       return NextResponse.json(
         { error: "Name, email and message are required." },
-        { status: 400 }
+        { status: 400 },
       );
     }
     if (!consent) {
       return NextResponse.json(
         { error: "Please accept the privacy consent to submit the form." },
-        { status: 400 }
+        { status: 400 },
       );
     }
     if (!isPlausibleEmail(email)) {
-      return NextResponse.json({ error: "Please provide a valid email." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Please provide a valid email." },
+        { status: 400 },
+      );
     }
     if (message.length < 10) {
-      return NextResponse.json({ error: "Message is too short." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Message is too short." },
+        { status: 400 },
+      );
     }
 
     // Soft caps (server-side safety). Your schema already caps message @ 2000.
@@ -91,9 +124,15 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({ ok: true, id: String(doc._id) }, { status: 201 });
-  } catch (e: any) {
+    return NextResponse.json(
+      { ok: true, id: String(doc._id) },
+      { status: 201 },
+    );
+  } catch (e: unknown) {
     console.error("POST /api/contacts", e);
-    return NextResponse.json({ error: "Failed to submit contact message." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to submit contact message." },
+      { status: 500 },
+    );
   }
 }

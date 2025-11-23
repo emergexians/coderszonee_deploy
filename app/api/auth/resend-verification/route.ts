@@ -11,7 +11,9 @@ const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = Number(process.env.SMTP_PORT || 465);
 const SMTP_USER = process.env.SMTP_USER;
 const SMTP_PASS = process.env.SMTP_PASS;
-const FROM_EMAIL = process.env.FROM_EMAIL || `no-reply@${process.env.NEXT_PUBLIC_SITE_DOMAIN || "example.com"}`;
+const FROM_EMAIL =
+  process.env.FROM_EMAIL ||
+  `no-reply@${process.env.NEXT_PUBLIC_SITE_DOMAIN || "example.com"}`;
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
 const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || "MySite";
 
@@ -36,20 +38,38 @@ async function sendEmail(to: string, subject: string, html: string) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => null);
-    if (!body || !body.email) return NextResponse.json({ error: "email required" }, { status: 400 });
+    if (!body || !body.email) {
+      return NextResponse.json({ error: "email required" }, { status: 400 });
+    }
 
     const email = (body.email as string).toLowerCase().trim();
 
     await dbConnect();
 
     const user = await User.findOne({ email }).exec();
-    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
-    if (user.emailVerified) return NextResponse.json({ ok: true, message: "Already verified" }, { status: 200 });
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    if (user.emailVerified) {
+      return NextResponse.json(
+        { ok: true, message: "Already verified" },
+        { status: 200 },
+      );
+    }
 
     // Optional: simple rate-limit: don't allow resend if last token still valid for > 10 minutes
     const now = new Date();
-    if (user.emailVerificationExpires && user.emailVerificationExpires > new Date(now.getTime() + 10 * 60 * 1000)) {
-      return NextResponse.json({ error: "Verification email already sent recently. Please check inbox." }, { status: 429 });
+    if (
+      user.emailVerificationExpires &&
+      user.emailVerificationExpires > new Date(now.getTime() + 10 * 60 * 1000)
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Verification email already sent recently. Please check inbox.",
+        },
+        { status: 429 },
+      );
     }
 
     const rawToken = crypto.randomBytes(24).toString("hex");
@@ -74,9 +94,14 @@ export async function POST(req: NextRequest) {
 
     await sendEmail(email, `Verify your ${SITE_NAME} account`, html);
 
-    return NextResponse.json({ ok: true, message: "Verification email sent" }, { status: 200 });
-  } catch (err: any) {
+    return NextResponse.json(
+      { ok: true, message: "Verification email sent" },
+      { status: 200 },
+    );
+  } catch (err: unknown) {
     console.error("Resend verification error:", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    const message =
+      err instanceof Error ? err.message : "Server error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

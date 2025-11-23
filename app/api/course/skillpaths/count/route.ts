@@ -9,8 +9,11 @@ export async function GET() {
     await dbConnect();
     const count = await SkillPath.countDocuments();
     return NextResponse.json({ count });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("SkillPaths count error:", err);
-    return NextResponse.json({ error: "Failed to fetch skill paths count" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch skill paths count" },
+      { status: 500 },
+    );
   }
 }

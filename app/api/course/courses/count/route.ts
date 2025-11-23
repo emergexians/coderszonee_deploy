@@ -9,8 +9,11 @@ export async function GET() {
     await dbConnect();
     const count = await Course.countDocuments();
     return NextResponse.json({ count });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Courses count error:", err);
-    return NextResponse.json({ error: "Failed to fetch courses count" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch courses count" },
+      { status: 500 },
+    );
   }
 }
