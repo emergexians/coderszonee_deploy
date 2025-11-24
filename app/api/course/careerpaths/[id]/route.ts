@@ -1,5 +1,5 @@
 // app/api/course/careerpaths/[id]/route.ts
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { Types } from "mongoose";
 import { z } from "zod";
 import { dbConnect } from "@/lib/db";
@@ -32,43 +32,76 @@ function invalidId(id: string) {
   return !Types.ObjectId.isValid(id);
 }
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+type Ctx = {
+  params: Promise<{ id: string }>;
+};
+
+export async function GET(_req: NextRequest, { params }: Ctx) {
   try {
     await dbConnect();
-    const { id } = params;
-    if (invalidId(id)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+
+    const { id } = await params; // ✅ params is async
+    if (invalidId(id)) {
+      return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+    }
 
     const doc = await CareerPath.findById(id).lean();
-    if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!doc) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
-    return NextResponse.json(doc, { headers: { "cache-control": "no-store" } });
+    return NextResponse.json(doc, {
+      headers: { "cache-control": "no-store" },
+    });
   } catch (err) {
     console.error("[careerpaths][GET:ID]", err);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: Ctx) {
   try {
     await dbConnect();
-    const { id } = params;
-    if (invalidId(id)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+
+    const { id } = await params; // ✅ params is async
+    if (invalidId(id)) {
+      return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+    }
 
     const raw = await req.json();
+
     if (typeof raw.skills === "string")
-      raw.skills = raw.skills.split(",").map((s: string) => s.trim()).filter(Boolean);
+      raw.skills = raw.skills
+        .split(",")
+        .map((s: string) => s.trim())
+        .filter(Boolean);
+
     if (typeof raw.perks === "string")
-      raw.perks = raw.perks.split(",").map((s: string) => s.trim()).filter(Boolean);
+      raw.perks = raw.perks
+        .split(",")
+        .map((s: string) => s.trim())
+        .filter(Boolean);
+
     if (typeof raw.rating === "string") raw.rating = Number(raw.rating);
     if (typeof raw.students === "string") raw.students = Number(raw.students);
 
     const parsed = PartialPayload.safeParse(raw);
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+      return NextResponse.json(
+        { error: parsed.error.flatten() },
+        { status: 400 }
+      );
     }
 
-    const updated = await CareerPath.findByIdAndUpdate(id, parsed.data, { new: true }).lean();
-    if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const updated = await CareerPath.findByIdAndUpdate(
+      id,
+      parsed.data,
+      { new: true }
+    ).lean();
+
+    if (!updated) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
     return NextResponse.json(updated);
   } catch (err) {
@@ -77,11 +110,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: Ctx) {
   try {
     await dbConnect();
-    const { id } = params;
-    if (invalidId(id)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+
+    const { id } = await params; // ✅ params is async
+    if (invalidId(id)) {
+      return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+    }
 
     await CareerPath.findByIdAndDelete(id);
     return new NextResponse(null, { status: 204 });
