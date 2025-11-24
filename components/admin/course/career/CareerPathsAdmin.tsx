@@ -1,6 +1,7 @@
 // components/admin/courses/career/CareerPathsAdmin.tsx
 "use client";
 
+import Image from "next/image";
 import {
   useEffect,
   useMemo,
@@ -107,7 +108,9 @@ function Pill({
     amber: "bg-amber-50 text-amber-700",
   };
   return (
-    <span className={cx("px-2.5 py-1 rounded-full text-xs font-medium", tones[tone])}>
+    <span
+      className={cx("px-2.5 py-1 rounded-full text-xs font-medium", tones[tone])}
+    >
       {children}
     </span>
   );
@@ -195,7 +198,10 @@ function UrlOrUpload({
       const body = new FormData();
       body.append("file", file);
 
-      const res = await fetch("/api/upload/careerpaths", { method: "POST", body });
+      const res = await fetch("/api/upload/careerpaths", {
+        method: "POST",
+        body,
+      });
 
       const ct = res.headers.get("content-type") || "";
       const isJson = ct.toLowerCase().includes("application/json");
@@ -204,7 +210,9 @@ function UrlOrUpload({
       let dataText = "";
 
       if (isJson) {
-        dataJson = (await res.json().catch(() => null)) as UploadResponse | null;
+        dataJson = (await res
+          .json()
+          .catch(() => null)) as UploadResponse | null;
       } else {
         dataText = await res.text();
       }
@@ -325,7 +333,8 @@ function SyllabusBuilder({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="text-sm text-gray-600">
-          Build sections & topics visually {required && <span className="text-red-500">*</span>}
+          Build sections & topics visually{" "}
+          {required && <span className="text-red-500">*</span>}
         </div>
         <button
           type="button"
@@ -394,7 +403,9 @@ function SyllabusBuilder({
       </div>
 
       {required && !hasAtLeastOne && (
-        <p className="text-xs text-red-600">Please add at least one section with a title.</p>
+        <p className="text-xs text-red-600">
+          Please add at least one section with a title.
+        </p>
       )}
     </div>
   );
@@ -464,7 +475,9 @@ function CareerPathForm({
   isEdit?: boolean;
 }) {
   const livePreview =
-    (formPath.img && (formPath.img.startsWith("/") || formPath.img.startsWith("http"))) || false;
+    (formPath.img &&
+      (formPath.img.startsWith("/") || formPath.img.startsWith("http"))) ||
+    false;
   const perksPreview = parseCommaList(formPath.perks).slice(0, 3);
 
   return (
@@ -483,7 +496,11 @@ function CareerPathForm({
         />
       </Field>
 
-      <Field label="Image (URL or Upload)" required hint="Click to upload or enter image URL">
+      <Field
+        label="Image (URL or Upload)"
+        required
+        hint="Click to upload or enter image URL"
+      >
         <UrlOrUpload
           required
           value={formPath.img}
@@ -532,7 +549,10 @@ function CareerPathForm({
         </select>
       </Field>
 
-      <Field label="Skills (comma separated)" hint="e.g., React, TypeScript, PostgreSQL">
+      <Field
+        label="Skills (comma separated)"
+        hint="e.g., React, TypeScript, PostgreSQL"
+      >
         <input
           className="w-full rounded-lg border px-3 py-2 outline-none focus:border-orange-500"
           value={formPath.skills}
@@ -618,7 +638,11 @@ function CareerPathForm({
           required
           hint="Add sections and topics. At least one section title is required."
         >
-          <SyllabusBuilder value={syllabusPath} onChange={setSyllabusPath} required />
+          <SyllabusBuilder
+            value={syllabusPath}
+            onChange={setSyllabusPath}
+            required
+          />
         </Field>
       </div>
 
@@ -627,14 +651,14 @@ function CareerPathForm({
         <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="col-span-1">
             <div className="text-sm font-medium mb-2">Image Preview</div>
-            <div className="aspect-[16/9] rounded-xl border bg-gray-50 flex items-center justify-center overflow-hidden">
-              <img
+            <div className="relative aspect-[16/9] rounded-xl border bg-gray-50 overflow-hidden">
+              <Image
                 src={livePreview ? formPath.img : FALLBACK_IMG}
-                className="h-full w-full object-cover"
                 alt="preview"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = FALLBACK_IMG;
-                }}
+                fill
+                sizes="(max-width: 768px) 100vw, 33vw"
+                unoptimized
+                className="object-cover"
               />
             </div>
           </div>
@@ -643,14 +667,16 @@ function CareerPathForm({
             <div className="text-sm font-medium mb-2">Card Preview</div>
             <div className="rounded-xl border bg-white p-4 shadow-sm">
               <div className="flex items-center gap-3">
-                <img
-                  src={livePreview ? formPath.img : FALLBACK_IMG}
-                  className="h-14 w-24 rounded-md object-cover border"
-                  alt=""
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = FALLBACK_IMG;
-                  }}
-                />
+                <div className="relative h-14 w-24 shrink-0 overflow-hidden rounded-md border">
+                  <Image
+                    src={livePreview ? formPath.img : FALLBACK_IMG}
+                    alt=""
+                    fill
+                    sizes="96px"
+                    unoptimized
+                    className="object-cover"
+                  />
+                </div>
                 <div className="min-w-0">
                   <div className="font-semibold truncate">
                     {formPath.name || "Untitled path"}
@@ -672,9 +698,7 @@ function CareerPathForm({
                       </span>
                     )}
                     {syllabusPath?.length ? (
-                      <Pill tone="green">
-                        {syllabusPath.length} sections
-                      </Pill>
+                      <Pill tone="green">{syllabusPath.length} sections</Pill>
                     ) : null}
                   </div>
 
@@ -797,7 +821,6 @@ export default function CareerPathsAdmin() {
     return () => {
       mounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const query = q.trim().toLowerCase();
@@ -913,8 +936,7 @@ export default function CareerPathsAdmin() {
       resetForms();
     } catch (err: unknown) {
       console.error(err);
-      const msg =
-        err instanceof Error ? err.message : "Server error";
+      const msg = err instanceof Error ? err.message : "Server error";
       showToast(msg, "error");
     } finally {
       setCreating(false);
@@ -1022,8 +1044,7 @@ export default function CareerPathsAdmin() {
       resetForms();
     } catch (err: unknown) {
       console.error(err);
-      const msg =
-        err instanceof Error ? err.message : "Server error";
+      const msg = err instanceof Error ? err.message : "Server error";
       showToast(msg, "error");
     } finally {
       setEditing(false);
@@ -1046,14 +1067,16 @@ export default function CareerPathsAdmin() {
       <tr className="hover:bg-gray-50">
         <td className="px-4 py-4">
           <div className="flex items-center gap-3">
-            <img
-              src={item.img || FALLBACK_IMG}
-              alt={item.name}
-              className="h-12 w-20 rounded-md object-cover border"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src = FALLBACK_IMG;
-              }}
-            />
+            <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-md border">
+              <Image
+                src={item.img || FALLBACK_IMG}
+                alt={item.name}
+                fill
+                sizes="80px"
+                unoptimized
+                className="object-cover"
+              />
+            </div>
             <div className="min-w-0">
               <div className="truncate font-medium">{item.name}</div>
               {linkHref ? (
@@ -1117,9 +1140,6 @@ export default function CareerPathsAdmin() {
       </tr>
     );
   }
-
-  const livePreview =
-    (formPath.img && (formPath.img.startsWith("/") || formPath.img.startsWith("http"))) || false;
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">

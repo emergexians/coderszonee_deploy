@@ -1,3 +1,4 @@
+// app/instructor/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -74,7 +75,9 @@ export default function InstructorPanel() {
     if (typeof window === "undefined") return "light";
     const stored = localStorage.getItem("__theme");
     if (stored === "light" || stored === "dark") return stored;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
   });
 
   useEffect(() => {
@@ -88,51 +91,154 @@ export default function InstructorPanel() {
     }
   }, [theme]);
 
-  const me = {
-    name: "Dr. Meera Nair",
-    id: "INS-1024",
-    dept: "Computer Science",
-    term: "Semester 5",
-  };
+  const me = useMemo(
+    () => ({
+      name: "Dr. Meera Nair",
+      id: "INS-1024",
+      dept: "Computer Science",
+      term: "Semester 5",
+    }),
+    []
+  );
 
-  const stats: StatCard[] = [
-    { label: "Active Courses", value: 3, icon: <BookOpen className="h-5 w-5" />, tone: "from-indigo-500 to-violet-500" },
-    { label: "Students", value: 128, icon: <Users className="h-5 w-5" />, tone: "from-emerald-500 to-teal-500" },
-    { label: "To Grade", value: 12, icon: <FileText className="h-5 w-5" />, tone: "from-orange-500 to-rose-500" },
-    { label: "Avg Rating", value: "4.7", icon: <Star className="h-5 w-5" />, tone: "from-cyan-500 to-sky-500" },
-  ];
+  const stats = useMemo<StatCard[]>(
+    () => [
+      {
+        label: "Active Courses",
+        value: 3,
+        icon: <BookOpen className="h-5 w-5" />,
+        tone: "from-indigo-500 to-violet-500",
+      },
+      {
+        label: "Students",
+        value: 128,
+        icon: <Users className="h-5 w-5" />,
+        tone: "from-emerald-500 to-teal-500",
+      },
+      {
+        label: "To Grade",
+        value: 12,
+        icon: <FileText className="h-5 w-5" />,
+        tone: "from-orange-500 to-rose-500",
+      },
+      {
+        label: "Avg Rating",
+        value: "4.7",
+        icon: <Star className="h-5 w-5" />,
+        tone: "from-cyan-500 to-sky-500",
+      },
+    ],
+    []
+  );
 
-  const courses: CourseItem[] = [
-    { code: "CS501", title: "Distributed Systems", section: "A", enrollment: 42, progress: 68 },
-    { code: "CS523", title: "Machine Learning", section: "B", enrollment: 51, progress: 54 },
-    { code: "CS561", title: "Cloud Computing", section: "C", enrollment: 35, progress: 31 },
-  ];
+  const courses = useMemo<CourseItem[]>(
+    () => [
+      {
+        code: "CS501",
+        title: "Distributed Systems",
+        section: "A",
+        enrollment: 42,
+        progress: 68,
+      },
+      {
+        code: "CS523",
+        title: "Machine Learning",
+        section: "B",
+        enrollment: 51,
+        progress: 54,
+      },
+      {
+        code: "CS561",
+        title: "Cloud Computing",
+        section: "C",
+        enrollment: 35,
+        progress: 31,
+      },
+    ],
+    []
+  );
 
-  const tasks: readonly Task[] = [
-    { id: "T1", course: "CS523", title: "Quiz #2 Grading", due: "2025-09-04", type: "grading", status: "due" },
-    { id: "T2", course: "CS501", title: "Lab #3 Assessment", due: "2025-09-03", type: "grading", status: "due" },
-    { id: "T3", course: "CS561", title: "Project Proposal Review", due: "2025-09-12", type: "review", status: "open" },
-    { id: "T4", course: "CS501", title: "Assignment #1", due: "2025-08-26", type: "grading", status: "graded" },
-  ] as const;
+  // ✅ wrapped in useMemo so it's stable and won't trigger exhaustive-deps warning
+  const tasks = useMemo<readonly Task[]>(
+    () =>
+      [
+        {
+          id: "T1",
+          course: "CS523",
+          title: "Quiz #2 Grading",
+          due: "2025-09-04",
+          type: "grading",
+          status: "due",
+        },
+        {
+          id: "T2",
+          course: "CS501",
+          title: "Lab #3 Assessment",
+          due: "2025-09-03",
+          type: "grading",
+          status: "due",
+        },
+        {
+          id: "T3",
+          course: "CS561",
+          title: "Project Proposal Review",
+          due: "2025-09-12",
+          type: "review",
+          status: "open",
+        },
+        {
+          id: "T4",
+          course: "CS501",
+          title: "Assignment #1",
+          due: "2025-08-26",
+          type: "grading",
+          status: "graded",
+        },
+      ] as const,
+    []
+  );
 
-  const messages: MessageItem[] = [
-    { id: "M1", from: "Aarav Sharma", course: "CS523", snippet: "Could you clarify the loss function…", at: "2025-08-29T10:12:00Z" },
-    { id: "M2", from: "Priya Gupta", course: "CS501", snippet: "Absent for lab, request for…", at: "2025-08-28T14:05:00Z" },
-  ];
+  const messages = useMemo<MessageItem[]>(
+    () => [
+      {
+        id: "M1",
+        from: "Aarav Sharma",
+        course: "CS523",
+        snippet: "Could you clarify the loss function…",
+        at: "2025-08-29T10:12:00Z",
+      },
+      {
+        id: "M2",
+        from: "Priya Gupta",
+        course: "CS501",
+        snippet: "Absent for lab, request for…",
+        at: "2025-08-28T14:05:00Z",
+      },
+    ],
+    []
+  );
 
   const filteredTasks = useMemo(() => {
     const term = q.trim().toLowerCase();
     return tasks.filter((t) => {
-      const matchesQ = !term || `${t.title} ${t.course}`.toLowerCase().includes(term);
+      const matchesQ =
+        !term ||
+        `${t.title} ${t.course}`.toLowerCase().includes(term);
+
       const matchesF =
         filter === "all"
           ? true
           : filter === "graded"
           ? t.status === "graded"
           : t.status !== "graded";
+
       return matchesQ && matchesF;
     });
   }, [q, filter, tasks]);
+
+  const openTask = openId
+    ? tasks.find((x) => x.id === openId) ?? null
+    : null;
 
   return (
     <div className="min-h-[100svh] bg-gradient-to-b from-gray-50 to-white dark:from-gray-950 dark:to-gray-900 text-gray-900 dark:text-gray-50">
@@ -140,7 +246,10 @@ export default function InstructorPanel() {
 
       <header className="sticky top-0 z-40 border-b border-gray-200/70 bg-white/70 backdrop-blur dark:border-gray-800 dark:bg-gray-900/70">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3">
-          <button className="rounded-xl p-2 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Home">
+          <button
+            className="rounded-xl p-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+            aria-label="Home"
+          >
             <Home className="h-5 w-5" />
           </button>
           <div className="font-semibold">Instructor Panel</div>
@@ -156,19 +265,31 @@ export default function InstructorPanel() {
               />
             </div>
 
-            <button className="rounded-xl p-2 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Notifications">
+            <button
+              className="rounded-xl p-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+              aria-label="Notifications"
+            >
               <Bell className="h-5 w-5" />
             </button>
-            <button className="rounded-xl p-2 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Settings">
+            <button
+              className="rounded-xl p-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+              aria-label="Settings"
+            >
               <Settings className="h-5 w-5" />
             </button>
 
             <button
-              onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
+              onClick={() =>
+                setTheme((t) => (t === "light" ? "dark" : "light"))
+              }
               className="rounded-xl p-2 hover:bg-gray-100 dark:hover:bg-gray-800"
               aria-label="Toggle theme"
             >
-              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              {theme === "dark" ? (
+                <Sun className="h-5 w-5" />
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
             </button>
 
             <div className="h-6 w-px bg-gray-200 dark:bg-gray-800 mx-1" />
@@ -189,8 +310,12 @@ export default function InstructorPanel() {
               <div>
                 <div className="font-semibold">{me.name}</div>
                 <div className="text-xs text-gray-500 mt-0.5">{me.id}</div>
-                <div className="text-sm text-gray-600 mt-2 dark:text-gray-400">{me.dept}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">{me.term}</div>
+                <div className="text-sm text-gray-600 mt-2 dark:text-gray-400">
+                  {me.dept}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {me.term}
+                </div>
               </div>
               <span className="rounded-lg bg-gradient-to-r from-orange-500 to-fuchsia-500 px-2.5 py-1 text-xs text-white">
                 Faculty
@@ -234,7 +359,10 @@ export default function InstructorPanel() {
                   <div className="flex items-center justify-between">
                     <span className="font-medium">{m.from}</span>
                     <span className="text-xs text-gray-500">
-                      {new Date(m.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      {new Date(m.at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </span>
                   </div>
                   <div className="text-xs text-gray-500">{m.course}</div>
@@ -254,10 +382,18 @@ export default function InstructorPanel() {
                 className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
               >
                 <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-600 dark:text-gray-400">{s.label}</div>
-                  <div className={`rounded-lg p-2 text-white bg-gradient-to-r ${s.tone}`}>{s.icon}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    {s.label}
+                  </div>
+                  <div
+                    className={`rounded-lg p-2 text-white bg-gradient-to-r ${s.tone}`}
+                  >
+                    {s.icon}
+                  </div>
                 </div>
-                <div className="mt-2 text-2xl font-semibold tracking-tight">{s.value}</div>
+                <div className="mt-2 text-2xl font-semibold tracking-tight">
+                  {s.value}
+                </div>
               </motion.div>
             ))}
           </div>
@@ -284,14 +420,18 @@ export default function InstructorPanel() {
                       <Users className="h-3.5 w-3.5" /> {c.enrollment}
                     </span>
                   </div>
-                  <div className="mt-1 font-medium line-clamp-2">{c.title}</div>
+                  <div className="mt-1 font-medium line-clamp-2">
+                    {c.title}
+                  </div>
                   <div className="mt-3 h-2 w-full rounded-full bg-gray-100 dark:bg-gray-800">
                     <div
                       className="h-2 rounded-full bg-gradient-to-r from-sky-500 to-cyan-500"
                       style={{ width: `${c.progress}%` }}
                     />
                   </div>
-                  <div className="mt-1 text-xs text-gray-500">{c.progress}% completed</div>
+                  <div className="mt-1 text-xs text-gray-500">
+                    {c.progress}% completed
+                  </div>
                 </motion.div>
               ))}
             </div>
@@ -301,9 +441,21 @@ export default function InstructorPanel() {
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Grading & Tasks</h2>
               <div className="flex flex-wrap items-center gap-2">
-                <FilterPill text="All" active={filter === "all"} onClick={() => setFilter("all")} />
-                <FilterPill text="Due" active={filter === "due"} onClick={() => setFilter("due")} />
-                <FilterPill text="Graded" active={filter === "graded"} onClick={() => setFilter("graded")} />
+                <FilterPill
+                  text="All"
+                  active={filter === "all"}
+                  onClick={() => setFilter("all")}
+                />
+                <FilterPill
+                  text="Due"
+                  active={filter === "due"}
+                  onClick={() => setFilter("due")}
+                />
+                <FilterPill
+                  text="Graded"
+                  active={filter === "graded"}
+                  onClick={() => setFilter("graded")}
+                />
               </div>
             </div>
 
@@ -355,13 +507,19 @@ export default function InstructorPanel() {
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                   {filteredTasks.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                      <td
+                        colSpan={6}
+                        className="px-4 py-8 text-center text-gray-500"
+                      >
                         <EmptyState label="No tasks match your filters." />
                       </td>
                     </tr>
                   ) : (
                     filteredTasks.map((t) => (
-                      <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                      <tr
+                        key={t.id}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-800/40"
+                      >
                         <Td>{t.course}</Td>
                         <Td>
                           <div className="font-medium">{t.title}</div>
@@ -391,10 +549,10 @@ export default function InstructorPanel() {
       </main>
 
       <AnimatePresence>
-        {openId ? (
+        {openTask ? (
           <TaskModal
             key="modal"
-            task={tasks.find((x) => x.id === openId)!}
+            task={openTask}
             onClose={() => setOpenId(null)}
           />
         ) : null}
@@ -428,10 +586,26 @@ function FilterPill({
   );
 }
 
-function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <th className={`px-4 py-2 text-left font-semibold ${className}`}>{children}</th>;
+function Th({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <th className={`px-4 py-2 text-left font-semibold ${className}`}>
+      {children}
+    </th>
+  );
 }
-function Td({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+function Td({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return <td className={`px-4 py-3 align-top ${className}`}>{children}</td>;
 }
 
@@ -444,7 +618,9 @@ function StatusBadge({ s }: { s: TaskStatus }) {
       : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
   const label = s === "graded" ? "Graded" : s === "due" ? "Due" : "Open";
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${tone}`}>
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${tone}`}
+    >
       {label}
     </span>
   );
@@ -507,7 +683,8 @@ function TaskModal({ task, onClose }: { task: Task; onClose: () => void }) {
           <div className="mt-4">
             <div className="text-sm text-gray-600 dark:text-gray-400">Notes</div>
             <p className="mt-1 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-              Review submissions on the LMS. Apply rubric consistently and publish grades by the due date.
+              Review submissions on the LMS. Apply rubric consistently and
+              publish grades by the due date.
             </p>
           </div>
 

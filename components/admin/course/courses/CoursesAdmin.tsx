@@ -498,25 +498,23 @@ export default function CoursesAdmin() {
     }
   }, [subOptions, formCourse.subCategory]);
 
-  // Initial load
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const list = await getList<Course>("/api/course/courses");
-        if (mounted) setCourses(list);
-      } catch (e) {
-        console.error(e);
-        showToast("Failed to load courses", "error");
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+useEffect(() => {
+  let mounted = true;
+  (async () => {
+    try {
+      const list = await getList<Course>("/api/course/courses");
+      if (mounted) setCourses(list);
+    } catch (e) {
+      console.error(e);
+      showToast("Failed to load courses", "error");
+    } finally {
+      if (mounted) setLoading(false);
+    }
+  })();
+  return () => {
+    mounted = false;
+  };
+}, []); // ✅ no disable needed
 
   const query = q.trim().toLowerCase();
   const filteredCourses = useMemo(() => {

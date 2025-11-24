@@ -1,3 +1,4 @@
+// app/student/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -68,108 +69,121 @@ export default function StudentPanel() {
     } catch {}
   }, [theme]);
 
-  const student = {
-    name: "Aarav Sharma",
-    id: "STU-2025-0142",
-    program: "B.Tech • Computer Science",
-    term: "Semester 5",
-  };
+  const student = useMemo(
+    () => ({
+      name: "Aarav Sharma",
+      id: "STU-2025-0142",
+      program: "B.Tech • Computer Science",
+      term: "Semester 5",
+    }),
+    []
+  );
 
-  const stats = [
-    {
-      label: "GPA",
-      value: "8.7",
-      icon: <Trophy className="h-5 w-5" />,
-      tone: "from-emerald-500 to-teal-500",
-    },
-    {
-      label: "Credits",
-      value: "82/160",
-      icon: <GraduationCap className="h-5 w-5" />,
-      tone: "from-indigo-500 to-violet-500",
-    },
-    {
-      label: "Attendance",
-      value: "92%",
-      icon: <CalendarDays className="h-5 w-5" />,
-      tone: "from-orange-500 to-rose-500",
-    },
-    {
-      label: "Due",
-      value: "3",
-      icon: <FileText className="h-5 w-5" />,
-      tone: "from-cyan-500 to-sky-500",
-    },
-  ];
+  const stats = useMemo(
+    () => [
+      {
+        label: "GPA",
+        value: "8.7",
+        icon: <Trophy className="h-5 w-5" />,
+        tone: "from-emerald-500 to-teal-500",
+      },
+      {
+        label: "Credits",
+        value: "82/160",
+        icon: <GraduationCap className="h-5 w-5" />,
+        tone: "from-indigo-500 to-violet-500",
+      },
+      {
+        label: "Attendance",
+        value: "92%",
+        icon: <CalendarDays className="h-5 w-5" />,
+        tone: "from-orange-500 to-rose-500",
+      },
+      {
+        label: "Due",
+        value: "3",
+        icon: <FileText className="h-5 w-5" />,
+        tone: "from-cyan-500 to-sky-500",
+      },
+    ],
+    []
+  );
 
-  const courses = [
-    {
-      code: "CS501",
-      title: "Distributed Systems",
-      faculty: "Prof. Meera Nair",
-      progress: 78,
-    },
-    {
-      code: "CS523",
-      title: "Machine Learning",
-      faculty: "Dr. R. Banerjee",
-      progress: 64,
-    },
-    {
-      code: "CS545",
-      title: "Compiler Design",
-      faculty: "Prof. K. Reddy",
-      progress: 51,
-    },
-    {
-      code: "CS561",
-      title: "Cloud Computing",
-      faculty: "Dr. A. Mahajan",
-      progress: 37,
-    },
-  ];
+  const courses = useMemo(
+    () => [
+      {
+        code: "CS501",
+        title: "Distributed Systems",
+        faculty: "Prof. Meera Nair",
+        progress: 78,
+      },
+      {
+        code: "CS523",
+        title: "Machine Learning",
+        faculty: "Dr. R. Banerjee",
+        progress: 64,
+      },
+      {
+        code: "CS545",
+        title: "Compiler Design",
+        faculty: "Prof. K. Reddy",
+        progress: 51,
+      },
+      {
+        code: "CS561",
+        title: "Cloud Computing",
+        faculty: "Dr. A. Mahajan",
+        progress: 37,
+      },
+    ],
+    []
+  );
 
-  const assignments: readonly Assignment[] = [
-    {
-      id: "A1",
-      course: "CS523",
-      title: "Logistic Regression from scratch",
-      due: "2025-09-05",
-      status: "due",
-      weight: 10,
-    },
-    {
-      id: "A2",
-      course: "CS501",
-      title: "Raft paper summary",
-      due: "2025-09-03",
-      status: "due",
-      weight: 5,
-    },
-    {
-      id: "A3",
-      course: "CS545",
-      title: "CFG to PDA conversion",
-      due: "2025-09-18",
-      status: "open",
-      weight: 8,
-    },
-    {
-      id: "A4",
-      course: "CS561",
-      title: "Kubernetes deployment YAML",
-      due: "2025-08-25",
-      status: "completed",
-      weight: 5,
-    },
-  ] as const;
+  // ✅ memoized so useMemo deps don't change each render
+  const assignments = useMemo<readonly Assignment[]>(
+    () =>
+      [
+        {
+          id: "A1",
+          course: "CS523",
+          title: "Logistic Regression from scratch",
+          due: "2025-09-05",
+          status: "due",
+          weight: 10,
+        },
+        {
+          id: "A2",
+          course: "CS501",
+          title: "Raft paper summary",
+          due: "2025-09-03",
+          status: "due",
+          weight: 5,
+        },
+        {
+          id: "A3",
+          course: "CS545",
+          title: "CFG to PDA conversion",
+          due: "2025-09-18",
+          status: "open",
+          weight: 8,
+        },
+        {
+          id: "A4",
+          course: "CS561",
+          title: "Kubernetes deployment YAML",
+          due: "2025-08-25",
+          status: "completed",
+          weight: 5,
+        },
+      ] as const,
+    []
+  );
 
   const filteredAssignments = useMemo(() => {
     const term = q.trim().toLowerCase();
     return assignments.filter((a) => {
       const matchesQ =
-        !term ||
-        `${a.title} ${a.course}`.toLowerCase().includes(term);
+        !term || `${a.title} ${a.course}`.toLowerCase().includes(term);
       const matchesF =
         filter === "all"
           ? true
@@ -179,6 +193,10 @@ export default function StudentPanel() {
       return matchesQ && matchesF;
     });
   }, [q, filter, assignments]);
+
+  const openAssignment = openId
+    ? assignments.find((x) => x.id === openId) ?? null
+    : null;
 
   return (
     <div className="min-h-[100svh] bg-gradient-to-b from-gray-50 to-white dark:from-gray-950 dark:to-gray-900 text-gray-900 dark:text-gray-50">
@@ -432,10 +450,7 @@ export default function StudentPanel() {
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                   {filteredAssignments.length === 0 ? (
                     <tr>
-                      <td
-                        colSpan={6}
-                        className="px-4 py-8 text-center text-gray-500"
-                      >
+                      <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                         <EmptyState />
                       </td>
                     </tr>
@@ -475,10 +490,10 @@ export default function StudentPanel() {
 
       {/* Modal */}
       <AnimatePresence>
-        {openId ? (
+        {openAssignment ? (
           <AssignmentModal
             key="modal"
-            assignment={assignments.find((x) => x.id === openId)!}
+            assignment={openAssignment}
             onClose={() => setOpenId(null)}
           />
         ) : null}
@@ -505,7 +520,11 @@ function NavItem({
         active
           ? "bg-gray-50 dark:bg-gray-800/60"
           : "hover:bg-gray-50 dark:hover:bg-gray-800/40"
-      } ${danger ? "text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10" : ""}`}
+      } ${
+        danger
+          ? "text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"
+          : ""
+      }`}
     >
       <span className="text-gray-500">{icon}</span>
       <span className="truncate">{text}</span>
@@ -566,7 +585,8 @@ function StatusBadge({ s }: { s: AssignmentStatus }) {
       : s === "due"
       ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20"
       : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
-  const label = s === "completed" ? "Completed" : s === "due" ? "Due soon" : "Open";
+  const label =
+    s === "completed" ? "Completed" : s === "due" ? "Due soon" : "Open";
   return (
     <span
       className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${tone}`}
@@ -628,6 +648,7 @@ function AssignmentModal({
               ×
             </button>
           </div>
+
           <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-xl border border-gray-200 p-3 dark:border-gray-800">
               <div className="text-gray-500">Due date</div>
@@ -638,15 +659,17 @@ function AssignmentModal({
               <div className="font-medium">{assignment.weight}%</div>
             </div>
           </div>
+
           <div className="mt-4">
             <div className="text-sm text-gray-600 dark:text-gray-400">
               Instructions
             </div>
             <p className="mt-1 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-              Submit a PDF via the LMS. Include your Student ID on the first page.
-              Late submissions up to 48 hours with 10% penalty.
+              Submit a PDF via the LMS. Include your Student ID on the first
+              page. Late submissions up to 48 hours with 10% penalty.
             </p>
           </div>
+
           <div className="mt-5 flex items-center justify-end gap-2">
             <button
               onClick={onClose}

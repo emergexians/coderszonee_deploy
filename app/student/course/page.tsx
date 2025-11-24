@@ -128,6 +128,18 @@ function getErrorMessage(e: unknown) {
   }
 }
 
+/** Narrow unknown to plain object */
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === "object" && !Array.isArray(v);
+}
+
+/** Payload may be Enrollment[] or {data: Enrollment[]} */
+function hasDataArray(v: unknown): v is { data: Enrollment[] } {
+  if (!isRecord(v)) return false;
+  const d = v["data"];
+  return Array.isArray(d);
+}
+
 /* =========================
    Page
 ========================= */
@@ -175,9 +187,10 @@ export default function MyEnrollmentsPage() {
         });
         if (!r.ok) throw new Error(`GET /api/enrollments -> ${r.status}`);
 
-        const payload = (await r.json()) as { data?: unknown } | Enrollment[];
-        const data: Enrollment[] = Array.isArray((payload as any)?.data)
-          ? ((payload as { data: Enrollment[] }).data)
+        const payload = (await r.json()) as unknown;
+
+        const data: Enrollment[] = hasDataArray(payload)
+          ? payload.data
           : Array.isArray(payload)
           ? (payload as Enrollment[])
           : [];
@@ -475,9 +488,7 @@ function EnrollmentCard({
           <div className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
             {row.courseType}
           </div>
-          <div className="mt-1 text-base font-semibold">
-            {row.courseSlug}
-          </div>
+          <div className="mt-1 text-base font-semibold">{row.courseSlug}</div>
           <div className="mt-1 text-xs text-neutral-500">
             Status: {row.status ?? "—"}
           </div>
@@ -497,7 +508,7 @@ function EnrollmentCard({
           </Link>
 
           {isActive && (
-            <a
+            <Link
               href={timelineUrl}
               target="_blank"
               rel="noreferrer noopener"
@@ -505,7 +516,7 @@ function EnrollmentCard({
               aria-label={`Open timeline for ${row.courseSlug}`}
             >
               Open Timeline
-            </a>
+            </Link>
           )}
         </div>
 
@@ -518,9 +529,7 @@ function EnrollmentCard({
             onClick={onPay}
             disabled={paying}
             className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold text-white shadow ${
-              paying
-                ? "bg-neutral-400"
-                : "bg-orange-500 hover:bg-orange-600"
+              paying ? "bg-neutral-400" : "bg-orange-500 hover:bg-orange-600"
             }`}
           >
             <BadgeIndianRupee className="h-4 w-4" />{" "}
