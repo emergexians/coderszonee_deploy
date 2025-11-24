@@ -4,39 +4,40 @@ import { motion } from "framer-motion";
 import { Terminal } from "lucide-react";
 import { useEffect, useState } from "react";
 
-export default function TypingTerminal() {
-  const lines = [
-    "> initializing coderszonee environment...",
-    "> loading all courses, skill & career paths...",
-    "> connecting with industry mentors...",
-    "> starting live cohort session...",
-    "> success ✔ Welcome to Coderszonee",
-  ];
+// ✅ stable constant outside component (no deps warning)
+const LINES = [
+  "> initializing coderszonee environment...",
+  "> loading all courses, skill & career paths...",
+  "> connecting with industry mentors...",
+  "> starting live cohort session...",
+  "> success ✔ Welcome to Coderszonee",
+];
 
+export default function TypingTerminal() {
   const [displayedLines, setDisplayedLines] = useState<string[]>([]);
   const [currentLine, setCurrentLine] = useState("");
   const [lineIndex, setLineIndex] = useState(0);
   const [charIndex, setCharIndex] = useState(0);
 
   useEffect(() => {
-    if (lineIndex < lines.length) {
-      if (charIndex < lines[lineIndex].length) {
-        const timeout = setTimeout(() => {
-          setCurrentLine((prev) => prev + lines[lineIndex][charIndex]);
-          setCharIndex((prev) => prev + 1);
-        }, 50); // typing speed
-        return () => clearTimeout(timeout);
-      } else {
-        const timeout = setTimeout(() => {
-          setDisplayedLines((prev) => [...prev, lines[lineIndex]]);
-          setCurrentLine("");
-          setCharIndex(0);
-          setLineIndex((prev) => prev + 1);
-        }, 500); // delay before next line starts
-        return () => clearTimeout(timeout);
-      }
+    if (lineIndex >= LINES.length) return;
+
+    if (charIndex < LINES[lineIndex].length) {
+      const timeout = setTimeout(() => {
+        setCurrentLine((prev) => prev + LINES[lineIndex][charIndex]);
+        setCharIndex((prev) => prev + 1);
+      }, 50); // typing speed
+      return () => clearTimeout(timeout);
+    } else {
+      const timeout = setTimeout(() => {
+        setDisplayedLines((prev) => [...prev, LINES[lineIndex]]);
+        setCurrentLine("");
+        setCharIndex(0);
+        setLineIndex((prev) => prev + 1);
+      }, 500); // delay before next line starts
+      return () => clearTimeout(timeout);
     }
-  }, [charIndex, lineIndex]);
+  }, [charIndex, lineIndex]); // ✅ no missing deps now
 
   return (
     <motion.div
@@ -56,11 +57,11 @@ export default function TypingTerminal() {
 
         {/* Already displayed lines */}
         {displayedLines.map((line, i) => (
-          <p key={i}>{line}</p>
+          <p key={`${line}-${i}`}>{line}</p>
         ))}
 
         {/* Currently typing line */}
-        {lineIndex < lines.length && (
+        {lineIndex < LINES.length && (
           <p>
             {currentLine}
             <span className="animate-pulse">|</span>

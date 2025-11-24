@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Rocket, ArrowRight, Briefcase } from "lucide-react";
+import Link from "next/link";
 import TypingTerminal from "./TypingTerminal";
 
 // Independent CountUp component
@@ -151,18 +152,19 @@ export default function HeroPage() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6, duration: 0.8 }}
           >
-            <a
+            <Link
               href="/courses"
               className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-base sm:text-lg font-semibold shadow-lg transition"
             >
               <Rocket className="w-4 h-4 sm:w-5 sm:h-5" /> Start Now
-            </a>
-            <a
+            </Link>
+
+            <Link
               href="/about"
               className="flex items-center gap-2 border border-white/40 hover:border-orange-500 px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-base sm:text-lg font-semibold transition"
             >
               Learn More <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
-            </a>
+            </Link>
           </motion.div>
         </div>
 

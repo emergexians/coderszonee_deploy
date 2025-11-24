@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
 const REASONS = [
   { value: "support", label: "Support" },
@@ -35,7 +36,28 @@ type Form = {
   website: string; // honeypot
 };
 
+type ResultState = null | { ok: boolean; msg: string };
+
+// What /api/contacts might return.
+// Flexible but typed → no `any`.
+type ContactApiResponse = {
+  ok?: boolean;
+  message?: string;
+  error?: string;
+};
+
 const MAX = 2000;
+
+async function safeJson<T>(res: Response, fallback: T): Promise<T> {
+  try {
+    if (res.status === 204) return fallback;
+    const ct = res.headers.get("content-type") || "";
+    if (!ct.toLowerCase().includes("application/json")) return fallback;
+    return (await res.json()) as T;
+  } catch {
+    return fallback;
+  }
+}
 
 export default function ContactForm() {
   const [form, setForm] = useState<Form>({
@@ -50,13 +72,17 @@ export default function ContactForm() {
     consent: false,
     website: "",
   });
+
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<null | { ok: boolean; msg: string }>(null);
+  const [result, setResult] = useState<ResultState>(null);
   const [shake, setShake] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
 
-  const left = useMemo(() => Math.max(0, MAX - form.message.length), [form.message]);
+  const left = useMemo(
+    () => Math.max(0, MAX - form.message.length),
+    [form.message]
+  );
 
   function set<K extends keyof Form>(key: K, val: Form[K]) {
     setForm((f) => ({ ...f, [key]: val }));
@@ -64,15 +90,16 @@ export default function ContactForm() {
 
   function validate(): string | null {
     if (!form.name.trim()) return "Please enter your name.";
-    if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) return "Please enter a valid email.";
+    if (!/^\S+@\S+\.\S+$/.test(form.email.trim()))
+      return "Please enter a valid email.";
     if (form.message.trim().length < 10) return "Message is too short.";
     if (!form.consent) return "Please accept the privacy consent.";
     return null;
   }
 
-  async function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (submitting) return; // guard double-submit
+    if (submitting) return;
 
     const err = validate();
     if (err) {
@@ -101,20 +128,13 @@ export default function ContactForm() {
         cache: "no-store",
       });
 
-      // Try to parse JSON safely even on non-2xx or HTML errors
-      let data: any = {};
-      try {
-        data = await res.json();
-      } catch {
-        data = {};
-      }
+      const data = await safeJson<ContactApiResponse>(res, {});
 
       if (!res.ok) {
-        const msg = data?.error || `Error ${res.status}`;
+        const msg = data.error || data.message || `Error ${res.status}`;
         setResult({ ok: false, msg });
       } else {
         setResult({ ok: true, msg: "Thanks! We’ve received your message." });
-        // reset form
         setForm({
           name: "",
           email: "",
@@ -128,8 +148,8 @@ export default function ContactForm() {
           website: "",
         });
       }
-    } catch (e: any) {
-      if (e?.name === "AbortError") return; // request was cancelled; do nothing
+    } catch (e: unknown) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
       setResult({ ok: false, msg: "Network error. Please try again." });
     } finally {
       setSubmitting(false);
@@ -138,7 +158,11 @@ export default function ContactForm() {
 
   const cardVariants = {
     hidden: { opacity: 0, y: 16 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: "easeOut" } },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.35, ease: "easeOut" },
+    },
   };
 
   return (
@@ -147,7 +171,9 @@ export default function ContactForm() {
       variants={cardVariants}
       initial="hidden"
       animate="show"
-      className={`relative space-y-4 ${shake ? "motion-safe:animate-[shake_0.5s]" : ""}`}
+      className={`relative space-y-4 ${
+        shake ? "motion-safe:animate-[shake_0.5s]" : ""
+      }`}
       aria-busy={submitting}
       noValidate
     >
@@ -216,7 +242,9 @@ export default function ContactForm() {
         <Field label="Reason" icon={<Sparkles className="h-5 w-5" />}>
           <select
             value={form.reason}
-            onChange={(e) => set("reason", e.target.value as Form["reason"])}
+            onChange={(e) =>
+              set("reason", e.target.value as Form["reason"])
+            }
             className="field-input bg-white"
             disabled={submitting}
             name="reason"
@@ -252,7 +280,11 @@ export default function ContactForm() {
           disabled={submitting}
           name="message"
         />
-        <div className={`mt-1 text-xs ${left < 100 ? "text-amber-600" : "text-gray-500"}`}>
+        <div
+          className={`mt-1 text-xs ${
+            left < 100 ? "text-amber-600" : "text-gray-500"
+          }`}
+        >
           {left} characters left
         </div>
       </Field>
@@ -293,9 +325,9 @@ export default function ContactForm() {
           />
           <span>
             I agree to the processing of my information as described in the{" "}
-            <a href="/privacy" className="text-orange-600 hover:underline">
+            <Link href="/privacy" className="text-orange-600 hover:underline">
               Privacy Policy
-            </a>
+            </Link>
             .
           </span>
         </label>
@@ -348,7 +380,12 @@ export default function ContactForm() {
               className="rounded-2xl bg-white/80 backdrop-blur px-5 py-3 shadow ring-1 ring-green-500/30"
             >
               <div className="flex items-center gap-2 text-green-700">
-                <svg width="20" height="20" viewBox="0 0 24 24" className="shrink-0">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  className="shrink-0"
+                >
                   <path
                     fill="currentColor"
                     d="M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20Zm-1.1-7.1l6-6-1.4-1.4-4.6 4.59-2.1-2.1-1.4 1.41 3.5 3.5Z"
@@ -364,17 +401,30 @@ export default function ContactForm() {
       {/* keyframes for shake */}
       <style jsx global>{`
         @keyframes shake {
-          10%, 90% { transform: translateX(-1px); }
-          20%, 80% { transform: translateX(2px); }
-          30%, 50%, 70% { transform: translateX(-4px); }
-          40%, 60% { transform: translateX(4px); }
+          10%,
+          90% {
+            transform: translateX(-1px);
+          }
+          20%,
+          80% {
+            transform: translateX(2px);
+          }
+          30%,
+          50%,
+          70% {
+            transform: translateX(-4px);
+          }
+          40%,
+          60% {
+            transform: translateX(4px);
+          }
         }
       `}</style>
     </motion.form>
   );
 }
 
-/* ---------- little helper components & styles ---------- */
+/* ---------- little helper components ---------- */
 
 function Field({
   label,
@@ -389,19 +439,14 @@ function Field({
     <div className="space-y-1.5 group">
       <label className="text-sm font-medium">{label}</label>
       <div className="relative">
-        {icon ? <span className="absolute left-3 top-2.5 text-gray-400">{icon}</span> : null}
+        {icon ? (
+          <span className="absolute left-3 top-2.5 text-gray-400">
+            {icon}
+          </span>
+        ) : null}
         {children}
         <span className="pointer-events-none absolute inset-0 -z-10 rounded-xl ring-1 ring-gray-200 transition group-focus-within:ring-orange-400/50" />
       </div>
     </div>
   );
-}
-
-// Optional global guard (kept for parity with your original code)
-declare global {
-  // eslint-disable-next-line no-var
-  var __contactFieldStyles: boolean | undefined;
-}
-if (!globalThis.__contactFieldStyles) {
-  globalThis.__contactFieldStyles = true;
 }

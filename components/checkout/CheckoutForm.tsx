@@ -1,4 +1,4 @@
-// app/components/checkout/CheckoutForm.tsx (or wherever you keep it)
+// app/components/checkout/CheckoutForm.tsx
 "use client";
 
 import { useState, type FormEvent } from "react";
@@ -7,8 +7,6 @@ import { useRouter } from "next/navigation";
 type CourseType = "skillpath" | "careerpath" | "course" | "hackathon";
 
 function normalizeType(t: CourseType): CourseType {
-  // If you ever pass "hackathons" from elsewhere, normalize here:
-  // return (t === "hackathons" ? "hackathon" : t) as CourseType;
   return t;
 }
 
@@ -20,8 +18,27 @@ function formatMoney(amount: number, currency: string) {
       maximumFractionDigits: 0,
     }).format(amount);
   } catch {
-    // Fallback
     return `${currency.toUpperCase()} ${amount}`;
+  }
+}
+
+// Flexible response type so TS allows json.error/json.message.
+type EnrollmentApiResponse = {
+  success?: boolean;
+  data?: unknown;
+  message?: string;
+  error?: string;
+};
+
+async function safeJson<T>(res: Response, fallback: T): Promise<T> {
+  try {
+    if (!res) return fallback;
+    if (res.status === 204) return fallback;
+    const ct = res.headers.get("content-type") || "";
+    if (!ct.toLowerCase().includes("application/json")) return fallback;
+    return (await res.json()) as T;
+  } catch {
+    return fallback;
   }
 }
 
@@ -43,7 +60,6 @@ export default function CheckoutForm({
 
   const type = normalizeType(courseType);
   const isHackathon = type === "hackathon";
-  const verb = isHackathon ? "registration" : "enrollment";
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -54,6 +70,7 @@ export default function CheckoutForm({
       setErr("Please enter your email");
       return;
     }
+
     // Lightweight email check (server should still validate)
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setErr("Please enter a valid email address");
@@ -68,21 +85,16 @@ export default function CheckoutForm({
         cache: "no-store",
         body: JSON.stringify({
           userEmail: trimmedEmail,
-          courseType: type,     // "skillpath" | "careerpath" | "course" | "hackathon"
-          courseSlug: slug,     // server should validate slug exists
+          courseType: type, // "skillpath" | "careerpath" | "course" | "hackathon"
+          courseSlug: slug, // server should validate slug exists
           status: "pending",
           amount: Number(price),
           currency: String(currency).toUpperCase(),
         }),
       });
 
-      // Try to parse JSON; fall back to text for better error messages
-      let json: any = null;
-      try {
-        json = await res.json();
-      } catch {
-        // ignore
-      }
+      const json = await safeJson<EnrollmentApiResponse | null>(res, null);
+
       if (!res.ok) {
         const msg =
           (json && (json.error || json.message)) ||
@@ -93,11 +105,12 @@ export default function CheckoutForm({
       // Success → redirect to success page with encoded params
       const qs = new URLSearchParams({
         course: type,
-        slug: slug,
+        slug,
       });
       router.push(`/checkout/success?${qs.toString()}`);
-    } catch (e: any) {
-      setErr(e?.message || "Something went wrong");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Something went wrong";
+      setErr(msg);
     } finally {
       setLoading(false);
     }
@@ -136,7 +149,11 @@ export default function CheckoutForm({
         className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-white font-medium hover:bg-blue-700 disabled:opacity-60"
         aria-busy={loading}
       >
-        {loading ? "Processing…" : isHackathon ? "Confirm registration" : "Confirm enrollment"}
+        {loading
+          ? "Processing…"
+          : isHackathon
+          ? "Confirm registration"
+          : "Confirm enrollment"}
       </button>
     </form>
   );

@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 
-// ---- Theme helpers (match your orange dashboard) ----
+// ---- Theme helpers ----
 const brand = {
   ring: "focus:ring-2 focus:ring-[#f97316]/30 focus:border-[#f97316]",
   btnSolid: "bg-[#111827] hover:opacity-95 text-white",
@@ -23,7 +24,7 @@ type Profile = {
   bio: string;
   gender: "Male" | "Female" | "Other" | "";
   skills: string[];
-  avatarDataUrl?: string | null; // for server load
+  avatarDataUrl?: string | null;
 };
 
 const initialProfile: Profile = {
@@ -65,7 +66,12 @@ function AvatarUploader({
     <div className="flex items-start gap-4">
       <div className="relative w-28 h-28 rounded-2xl border bg-white shadow-sm overflow-hidden">
         {preview ? (
-          <img src={preview} alt="Profile preview" className="w-full h-full object-cover" />
+          <Image
+            src={preview}
+            alt="Profile preview"
+            fill
+            className="object-cover"
+          />
         ) : (
           <div className="w-full h-full grid place-items-center text-gray-400 text-sm">
             No photo
@@ -82,6 +88,7 @@ function AvatarUploader({
           >
             Upload photo
           </button>
+
           {value && (
             <button
               type="button"
@@ -92,7 +99,9 @@ function AvatarUploader({
             </button>
           )}
         </div>
+
         <p className="text-xs text-gray-500">PNG, JPG, or WEBP — max 2MB.</p>
+
         <input
           ref={inputRef}
           type="file"
@@ -101,8 +110,13 @@ function AvatarUploader({
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (!file) return;
-            const ok = /image\/(png|jpe?g|webp)/i.test(file.type) && file.size <= 2 * 1024 * 1024;
+
+            const ok =
+              /image\/(png|jpe?g|webp)/i.test(file.type) &&
+              file.size <= 2 * 1024 * 1024;
+
             if (!ok) return alert("Please upload a PNG/JPG/WEBP ≤ 2MB.");
+
             onChange(file);
           }}
         />
@@ -111,7 +125,16 @@ function AvatarUploader({
   );
 }
 
-function FieldWrap({ children, label, required }: { children: React.ReactNode; label: string; required?: boolean }) {
+// ---------- Field Components ----------
+function FieldWrap({
+  children,
+  label,
+  required,
+}: {
+  children: React.ReactNode;
+  label: string;
+  required?: boolean;
+}) {
   return (
     <label className="block">
       <span className="block text-sm font-medium text-gray-700 mb-1">
@@ -205,6 +228,7 @@ function TextArea({
   );
 }
 
+// ---------- Skills Input ----------
 function SkillsInput({
   value,
   onChange,
@@ -213,29 +237,42 @@ function SkillsInput({
   onChange: (skills: string[]) => void;
 }) {
   const [input, setInput] = useState("");
+
   const add = () => {
     const s = input.trim();
     if (!s || value.includes(s)) return;
     onChange([...value, s]);
     setInput("");
   };
+
   return (
     <div>
-      <div className={`flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white px-2 py-2 ${brand.ring}`}>
+      <div
+        className={`flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white px-2 py-2 ${brand.ring}`}
+      >
         {value.map((s) => (
-          <span key={s} className={`inline-flex items-center gap-1 px-3 py-1 text-xs rounded-full ${brand.chip}`}>
+          <span
+            key={s}
+            className={`inline-flex items-center gap-1 px-3 py-1 text-xs rounded-full ${brand.chip}`}
+          >
             {s}
-            <button type="button" aria-label={`Remove ${s}`} className="text-[#a3470b]/70 hover:text-[#a3470b]" onClick={() => onChange(value.filter((x) => x !== s))}>
+            <button
+              type="button"
+              onClick={() => onChange(value.filter((x) => x !== s))}
+              className="text-[#a3470b]/70 hover:text-[#a3470b]"
+            >
               ×
             </button>
           </span>
         ))}
+
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === ",") {
-              e.preventDefault(); add();
+              e.preventDefault();
+              add();
             }
             if (e.key === "Backspace" && !input && value.length) {
               onChange(value.slice(0, -1));
@@ -244,7 +281,12 @@ function SkillsInput({
           placeholder="Type a skill and press Enter"
           className="flex-1 min-w-[160px] border-0 outline-none px-2 py-1 text-sm"
         />
-        <button type="button" onClick={add} className={`rounded-lg px-3 py-1.5 text-xs ${brand.btnSolid}`}>
+
+        <button
+          type="button"
+          onClick={add}
+          className={`rounded-lg px-3 py-1.5 text-xs ${brand.btnSolid}`}
+        >
           Add
         </button>
       </div>
@@ -252,10 +294,20 @@ function SkillsInput({
   );
 }
 
-function PreviewCard({ profile, avatarUrl }: { profile: Profile; avatarUrl: string | null }) {
+// ---------- Preview Card ----------
+function PreviewCard({
+  profile,
+  avatarUrl,
+}: {
+  profile: Profile;
+  avatarUrl: string | null;
+}) {
   const initials = useMemo(() => {
     const parts = profile.fullName.trim().split(/\s+/).slice(0, 2);
-    return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "?";
+    return (
+      parts.map((p) => p[0]?.toUpperCase() ?? "").join("") ||
+      "?"
+    );
   }, [profile.fullName]);
 
   const img = avatarUrl || profile.avatarDataUrl || null;
@@ -263,28 +315,63 @@ function PreviewCard({ profile, avatarUrl }: { profile: Profile; avatarUrl: stri
   return (
     <div className={`${brand.card} p-6`}>
       <div className="flex items-center gap-4">
-        <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gray-100 grid place-items-center text-gray-500 text-xl font-semibold">
-          {img ? <img src={img} alt="Avatar" className="w-full h-full object-cover" /> : <span>{initials}</span>}
+        <div className="relative w-20 h-20 rounded-2xl overflow-hidden bg-gray-100 grid place-items-center">
+          {img ? (
+            <Image src={img} alt="Avatar" fill className="object-cover" />
+          ) : (
+            <span className="text-gray-500 text-xl font-semibold">
+              {initials}
+            </span>
+          )}
         </div>
+
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">{profile.fullName || "Student Name"}</h3>
-          <p className="text-sm text-gray-600">{profile.branch || "Branch"} • {profile.graduationYear || "Year"}</p>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {profile.fullName || "Student Name"}
+          </h3>
+          <p className="text-sm text-gray-600">
+            {profile.branch || "Branch"} • {profile.graduationYear || "Year"}
+          </p>
           <p className="text-sm text-gray-600">{profile.city || "City"}</p>
         </div>
       </div>
 
       <div className="mt-4 space-y-2 text-sm">
-        <p><span className="text-gray-500">Email:</span> {profile.email || "—"}</p>
-        <p><span className="text-gray-500">Phone:</span> {profile.phone || "—"}</p>
+        <p>
+          <span className="text-gray-500">Email:</span>{" "}
+          {profile.email || "—"}
+        </p>
+        <p>
+          <span className="text-gray-500">Phone:</span>{" "}
+          {profile.phone || "—"}
+        </p>
+
         <p className="break-words">
           <span className="text-gray-500">Portfolio:</span>{" "}
-          {profile.portfolio ? <a href={profile.portfolio} target="_blank" rel="noreferrer" className="text-gray-900 underline">{profile.portfolio}</a> : "—"}
+          {profile.portfolio ? (
+            <a
+              href={profile.portfolio}
+              target="_blank"
+              rel="noreferrer"
+              className="text-gray-900 underline"
+            >
+              {profile.portfolio}
+            </a>
+          ) : (
+            "—"
+          )}
         </p>
-        <p className="text-gray-700 whitespace-pre-wrap">{profile.bio || "Short bio will appear here."}</p>
+
+        <p className="text-gray-700 whitespace-pre-wrap">
+          {profile.bio || "Short bio will appear here."}
+        </p>
+
         {!!profile.skills.length && (
           <div className="flex flex-wrap gap-2 pt-2">
             {profile.skills.map((s) => (
-              <span key={s} className={`px-2.5 py-1 text-xs rounded-full ${brand.chip}`}>{s}</span>
+              <span key={s} className={`px-2.5 py-1 text-xs rounded-full ${brand.chip}`}>
+                {s}
+              </span>
             ))}
           </div>
         )}
@@ -293,33 +380,46 @@ function PreviewCard({ profile, avatarUrl }: { profile: Profile; avatarUrl: stri
   );
 }
 
+// ---------- Main Page ----------
 export default function StudentProfilePage() {
   const [profile, setProfile] = useState<Profile>({ ...initialProfile });
-  const [avatar, setAvatar]   = useState<File | null>(null);
-  const [saving, setSaving]   = useState(false);
-  const [status, setStatus]   = useState<null | { type: "ok" | "err"; msg: string }>(null);
+  const [avatar, setAvatar] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<null | { type: "ok" | "err"; msg: string }>(null);
 
   const avatarUrl = useMemo(() => (avatar ? URL.createObjectURL(avatar) : null), [avatar]);
-  useEffect(() => () => { if (avatarUrl) URL.revokeObjectURL(avatarUrl); }, [avatarUrl]);
+
+  useEffect(
+    () => () => {
+      if (avatarUrl) URL.revokeObjectURL(avatarUrl);
+    },
+    [avatarUrl]
+  );
 
   const update = <K extends keyof Profile>(key: K, val: Profile[K]) =>
     setProfile((p) => ({ ...p, [key]: val }));
 
-  // Prefill from server when email is present (e.g., pulled from session or typed)
+  // Auto-fill profile from server when email changes
   useEffect(() => {
     if (!profile.email) return;
+
     const controller = new AbortController();
+
     (async () => {
       try {
-        const r = await fetch(`/api/student/profile?email=${encodeURIComponent(profile.email)}`, { signal: controller.signal });
+        const r = await fetch(
+          `/api/student/profile?email=${encodeURIComponent(profile.email)}`,
+          { signal: controller.signal }
+        );
         const j = await r.json();
         if (j?.data) setProfile((p) => ({ ...p, ...j.data }));
       } catch {}
     })();
+
     return () => controller.abort();
   }, [profile.email]);
 
-  async function fileToDataUrl(f: File | null) {
+  async function fileToDataUrl(f: File | null): Promise<string | null> {
     if (!f) return null;
     const buf = await f.arrayBuffer();
     const b64 = Buffer.from(buf).toString("base64");
@@ -329,20 +429,29 @@ export default function StudentProfilePage() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true); setStatus(null);
+    setSaving(true);
+    setStatus(null);
+
     try {
       const avatarDataUrl = await fileToDataUrl(avatar);
+
       const r = await fetch("/api/student/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...profile, avatarDataUrl }),
       });
-      const j = await r.json();
+
+      const j: { ok?: boolean; error?: string } = await r.json();
       if (!r.ok || !j?.ok) throw new Error(j?.error || "Failed to save");
+
       setStatus({ type: "ok", msg: "Profile saved." });
-      if (avatarDataUrl) setProfile((p) => ({ ...p, avatarDataUrl }));
-    } catch (err: any) {
-      setStatus({ type: "err", msg: err.message || "Save failed" });
+
+      if (avatarDataUrl) {
+        setProfile((p) => ({ ...p, avatarDataUrl }));
+      }
+    } catch (err) {
+      const e = err as Error;
+      setStatus({ type: "err", msg: e.message || "Save failed" });
     } finally {
       setSaving(false);
     }
@@ -366,6 +475,7 @@ export default function StudentProfilePage() {
           <form onSubmit={onSubmit} className={`${brand.card} p-6 space-y-6`}>
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-medium">Profile Photo</h2>
+
               {status && (
                 <span
                   className={`text-sm px-2.5 py-1 rounded-full ${
@@ -383,20 +493,54 @@ export default function StudentProfilePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FieldWrap label="Full Name" required>
-                <Input id="fullName" value={profile.fullName} onChange={(v) => update("fullName", v)} placeholder="e.g., Aashish Kumar" required />
+                <Input
+                  id="fullName"
+                  value={profile.fullName}
+                  onChange={(v) => update("fullName", v)}
+                  placeholder="e.g., Aashish Kumar"
+                  required
+                />
               </FieldWrap>
+
               <FieldWrap label="Email" required>
-                <Input id="email" type="email" value={profile.email} onChange={(v) => update("email", v)} placeholder="you@example.com" required />
+                <Input
+                  id="email"
+                  type="email"
+                  value={profile.email}
+                  onChange={(v) => update("email", v)}
+                  placeholder="you@example.com"
+                  required
+                />
               </FieldWrap>
+
               <FieldWrap label="Phone">
-                <Input id="phone" type="tel" value={profile.phone} onChange={(v) => update("phone", v)} placeholder="98185xxxxx" />
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={profile.phone}
+                  onChange={(v) => update("phone", v)}
+                  placeholder="98185xxxxx"
+                />
               </FieldWrap>
+
               <FieldWrap label="City">
-                <Input id="city" value={profile.city} onChange={(v) => update("city", v)} placeholder="New Delhi" />
+                <Input
+                  id="city"
+                  value={profile.city}
+                  onChange={(v) => update("city", v)}
+                  placeholder="New Delhi"
+                />
               </FieldWrap>
+
               <FieldWrap label="Branch / Major">
-                <Input id="branch" value={profile.branch} onChange={(v) => update("branch", v)} placeholder="CSE, ECE, etc." />
+                <Input
+                  id="branch"
+                  value={profile.branch}
+                  onChange={(v) => update("branch", v)}
+                  placeholder="CSE, ECE, etc."
+                />
               </FieldWrap>
+
               <FieldWrap label="Graduation Year">
                 <Select
                   id="graduationYear"
@@ -406,9 +550,17 @@ export default function StudentProfilePage() {
                   placeholder="Select year"
                 />
               </FieldWrap>
+
               <FieldWrap label="Portfolio / LinkedIn URL">
-                <Input id="portfolio" type="url" value={profile.portfolio} onChange={(v) => update("portfolio", v)} placeholder="https://…" />
+                <Input
+                  id="portfolio"
+                  type="url"
+                  value={profile.portfolio}
+                  onChange={(v) => update("portfolio", v)}
+                  placeholder="https://…"
+                />
               </FieldWrap>
+
               <FieldWrap label="Gender">
                 <Select
                   id="gender"
@@ -434,17 +586,30 @@ export default function StudentProfilePage() {
             </FieldWrap>
 
             <div>
-              <span className="block text-sm font-medium text-gray-700 mb-1">Skills</span>
-              <SkillsInput value={profile.skills} onChange={(skills) => update("skills", skills)} />
+              <span className="block text-sm font-medium text-gray-700 mb-1">
+                Skills
+              </span>
+              <SkillsInput
+                value={profile.skills}
+                onChange={(skills) => update("skills", skills)}
+              />
             </div>
 
             <div className="flex gap-3 pt-2">
-              <button type="submit" disabled={saving} className={`px-4 py-2 rounded-xl text-sm ${brand.btnSolid} disabled:opacity-60`}>
+              <button
+                type="submit"
+                disabled={saving}
+                className={`px-4 py-2 rounded-xl text-sm ${brand.btnSolid} disabled:opacity-60`}
+              >
                 {saving ? "Saving…" : "Save Profile"}
               </button>
+
               <button
                 type="button"
-                onClick={() => { setProfile({ ...initialProfile, email: profile.email }); setAvatar(null); }}
+                onClick={() => {
+                  setProfile({ ...initialProfile, email: profile.email });
+                  setAvatar(null);
+                }}
                 className={`px-4 py-2 rounded-xl text-sm ${brand.btnGhost}`}
               >
                 Reset

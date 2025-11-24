@@ -3,6 +3,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -691,7 +692,11 @@ function SkillPathForm({
 
       {/* Actions */}
       <div className="md:col-span-2 flex items-center justify-end gap-3 pt-2">
-        <button type="button" onClick={onCancel} className="rounded-xl border px-4 py-2 text-sm hover:bg-gray-50">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-xl border px-4 py-2 text-sm hover:bg-gray-50"
+        >
           Cancel
         </button>
         <button
@@ -752,43 +757,17 @@ export default function SkillPathsAdmin() {
   });
   const [syllabusPath, setSyllabusPath] = useState<SyllabusSection[]>([]);
 
-  // Initial load
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const skillsData = await getList<SkillPath>("/api/course/skillpaths");
-        if (mounted) setSkill(skillsData);
-      } catch (e) {
-        console.error(e);
-        showToast("Failed to load skill paths", "error");
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const query = q.trim().toLowerCase();
-  const filteredSkills = useMemo(() => {
-    if (!query) return skill;
-    return skill.filter((c) =>
-      [c.name, c.level, c.skills?.join(","), c.perks?.join(","), c.syllabus?.map((sec) => sec.title).join(",")].some(
-        (v) => v?.toLowerCase().includes(query)
-      )
-    );
-  }, [skill, query]);
-
-  function showToast(
-    msg: string,
-    type: Extract<ToastState, { show: true }>["type"] = "success"
-  ) {
-    setToast({ show: true, type, msg });
-    setTimeout(() => setToast({ show: false }), 2500);
-  }
+  const showToast = useCallback(
+    (
+      msg: string,
+      type: Extract<ToastState, { show: true }>["type"] = "success"
+    ) => {
+      setToast({ show: true, type, msg });
+      const t = setTimeout(() => setToast({ show: false }), 2500);
+      return () => clearTimeout(t);
+    },
+    []
+  );
 
   function resetForms() {
     setFormPath({
@@ -809,6 +788,39 @@ export default function SkillPathsAdmin() {
     setDeleteTarget({ id, name });
     setConfirmOpen(true);
   }
+
+  // Initial load (no eslint-disable needed now)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const skillsData = await getList<SkillPath>("/api/course/skillpaths");
+        if (mounted) setSkill(skillsData);
+      } catch (e) {
+        console.error(e);
+        showToast("Failed to load skill paths", "error");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [showToast]);
+
+  const query = q.trim().toLowerCase();
+  const filteredSkills = useMemo(() => {
+    if (!query) return skill;
+    return skill.filter((c) =>
+      [
+        c.name,
+        c.level,
+        c.skills?.join(","),
+        c.perks?.join(","),
+        c.syllabus?.map((sec) => sec.title).join(","),
+      ].some((v) => v?.toLowerCase().includes(query))
+    );
+  }, [skill, query]);
 
   async function confirmDelete() {
     if (!deleteTarget) return;
@@ -840,7 +852,9 @@ export default function SkillPathsAdmin() {
       .filter((s) => s.title.trim())
       .map((s) => ({
         title: s.title.trim(),
-        ...(s.items?.length ? { items: s.items.filter(Boolean).map((x) => x.trim()) } : {}),
+        ...(s.items?.length
+          ? { items: s.items.filter(Boolean).map((x) => x.trim()) }
+          : {}),
       }));
 
     setCreating(true);
@@ -866,10 +880,9 @@ export default function SkillPathsAdmin() {
       });
 
       const data = await safeJson<
-        (SkillPath & { error?: unknown; message?: unknown }) | {
-          error?: unknown;
-          message?: unknown;
-        } | null
+        (SkillPath & { error?: unknown; message?: unknown }) |
+          { error?: unknown; message?: unknown } |
+          null
       >(res, null);
 
       if (!res.ok || !data || !(data as SkillPath)._id) {
@@ -943,7 +956,9 @@ export default function SkillPathsAdmin() {
       .filter((s) => s.title.trim())
       .map((s) => ({
         title: s.title.trim(),
-        ...(s.items?.length ? { items: s.items.filter(Boolean).map((x) => x.trim()) } : {}),
+        ...(s.items?.length
+          ? { items: s.items.filter(Boolean).map((x) => x.trim()) }
+          : {}),
       }));
 
     setEditing(true);
@@ -969,10 +984,9 @@ export default function SkillPathsAdmin() {
       });
 
       const data = await safeJson<
-        (SkillPath & { error?: unknown; message?: unknown }) | {
-          error?: unknown;
-          message?: unknown;
-        } | null
+        (SkillPath & { error?: unknown; message?: unknown }) |
+          { error?: unknown; message?: unknown } |
+          null
       >(res, null);
 
       if (!res.ok || !data || !(data as SkillPath)._id) {

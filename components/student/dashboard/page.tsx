@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { CheckCircle2, Clock, Calendar, BookOpen, UserPlus } from "lucide-react";
 
 /**
@@ -10,14 +10,11 @@ import { CheckCircle2, Clock, Calendar, BookOpen, UserPlus } from "lucide-react"
  * Visual-first: replace the sample data fetch with your real APIs as needed.
  */
 
-const ORANGE = "bg-[#f97316]";
-const ORANGE_TEXT = "text-[#f97316]";
-
 type User = { name?: string; urn?: string | null } | null;
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<User>({ name: "AASHISH KUMAR", urn: "STD/2025/SBCQK" });
-  const [loading, setLoading] = useState(false);
+  // If you later fetch real user data, reintroduce setUser + useEffect.
+  const user: User = { name: "AASHISH KUMAR", urn: "STD/2025/SBCQK" };
 
   // sample content — replace with real fetches
   const stats = {
@@ -45,31 +42,33 @@ export default function DashboardPage() {
     { id: 3, text: "Earned badge — JS Fundamentals", time: "3 days ago" },
   ];
 
-  // TODO: fetch real user and data
-  useEffect(() => {
-    // Example: fetch('/api/student/me', { credentials: 'include' }).then(...)
-    // setUser(realData)
-  }, []);
-
   return (
     <div className="min-h-screen bg-white text-black px-6 py-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight">Welcome, {user?.name || "Student"} <span className="inline-block">👋</span></h1>
+            <h1 className="text-3xl font-extrabold tracking-tight">
+              Welcome, {user?.name || "Student"} <span className="inline-block">👋</span>
+            </h1>
             <div className="flex items-center gap-3 mt-2">
               <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 text-orange-700 text-sm">
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="#f97316"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="#f97316">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                </svg>
                 Student Dashboard
               </span>
-              <span className="px-3 py-1 rounded border border-black/10 text-xs bg-white">URN: <span className="font-semibold ml-1">{user?.urn ?? "No URN"}</span></span>
+              <span className="px-3 py-1 rounded border border-black/10 text-xs bg-white">
+                URN: <span className="font-semibold ml-1">{user?.urn ?? "No URN"}</span>
+              </span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-black text-white hover:opacity-95">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M13 2L3 7l10 5 10-5-10-5z"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">
+                <path d="M13 2L3 7l10 5 10-5-10-5z" />
+              </svg>
               Quick Start
             </button>
             <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-black/10">
@@ -99,7 +98,9 @@ export default function DashboardPage() {
                 <div className="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-black text-white text-sm">
                   <CheckCircle2 className="w-4 h-4" /> {stats.badges}
                 </div>
-                <div className="text-sm text-gray-600">Level: <span className="font-medium ml-1">Bronze</span></div>
+                <div className="text-sm text-gray-600">
+                  Level: <span className="font-medium ml-1">Bronze</span>
+                </div>
               </div>
             </div>
 
@@ -110,34 +111,22 @@ export default function DashboardPage() {
                   <div className="text-xl font-semibold mt-2">{stats.progressPercent}%</div>
                 </div>
                 <div className="p-2 rounded-lg bg-orange-50 text-orange-600">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#f97316"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#f97316">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                  </svg>
                 </div>
               </div>
 
               <div className="mt-4 w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                <div className="h-2 bg-[#f97316]" style={{ width: `${stats.progressPercent}%` }} />
+                <div
+                  className="h-2 bg-[#f97316]"
+                  style={{ width: `${stats.progressPercent}%` }}
+                />
               </div>
 
-              <div className="mt-3 text-xs text-gray-600">Next milestone: Complete "React Mastery" — 36% left</div>
-            </div>
-            
-
-            <div className="border-2 border-black/90 rounded-2xl p-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="text-sm text-gray-600">Overall progress</div>
-                  <div className="text-xl font-semibold mt-2">{stats.progressPercent}%</div>
-                </div>
-                <div className="p-2 rounded-lg bg-orange-50 text-orange-600">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#f97316"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>
-                </div>
+              <div className="mt-3 text-xs text-gray-600">
+                Next milestone: Complete &quot;React Mastery&quot; — 36% left
               </div>
-
-              <div className="mt-4 w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                <div className="h-2 bg-[#f97316]" style={{ width: `${stats.progressPercent}%` }} />
-              </div>
-
-              <div className="mt-3 text-xs text-gray-600">Next milestone: Complete "React Mastery" — 36% left</div>
             </div>
 
             <div className="border-2 border-black/90 rounded-2xl p-4">
@@ -151,7 +140,9 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="mt-3 text-sm text-gray-600">Assignments & quizzes due in next 7 days</div>
+              <div className="mt-3 text-sm text-gray-600">
+                Assignments & quizzes due in next 7 days
+              </div>
             </div>
           </div>
 
@@ -168,8 +159,12 @@ export default function DashboardPage() {
                 <div className="text-sm text-gray-600">Progress</div>
                 <div className="text-2xl font-bold mt-2">{ongoing.progress}%</div>
                 <div className="mt-4 flex flex-col gap-2">
-                  <button className="px-4 py-2 rounded-lg bg-[#f97316] text-white">Continue</button>
-                  <button className="px-4 py-2 rounded-lg border border-black/10">Syllabus</button>
+                  <button className="px-4 py-2 rounded-lg bg-[#f97316] text-white">
+                    Continue
+                  </button>
+                  <button className="px-4 py-2 rounded-lg border border-black/10">
+                    Syllabus
+                  </button>
                 </div>
               </div>
             </div>
@@ -190,7 +185,9 @@ export default function DashboardPage() {
                   <li key={r.id} className="flex items-center justify-between">
                     <div>
                       <div className="font-medium">{r.title}</div>
-                      <div className="text-xs text-gray-600">{r.level} • {r.hours}</div>
+                      <div className="text-xs text-gray-600">
+                        {r.level} • {r.hours}
+                      </div>
                     </div>
                     <button className="px-3 py-1.5 rounded-md border">View</button>
                   </li>
@@ -202,12 +199,18 @@ export default function DashboardPage() {
             <div className="border-2 border-black/90 rounded-2xl p-4">
               <div>
                 <h4 className="text-lg font-semibold">Need help with a course?</h4>
-                <div className="text-sm text-gray-600 mt-1">Connect with tutors or join study groups to stay on track.</div>
+                <div className="text-sm text-gray-600 mt-1">
+                  Connect with tutors or join study groups to stay on track.
+                </div>
               </div>
 
-              <div className="flex items-center gap-4">
-                <button className="px-5 py-3 rounded-lg bg-[#f97316] text-white">Find tutors</button>
-                <button className="px-5 py-3 rounded-lg border border-black/10">Join study group</button>
+              <div className="flex items-center gap-4 mt-3">
+                <button className="px-5 py-3 rounded-lg bg-[#f97316] text-white">
+                  Find tutors
+                </button>
+                <button className="px-5 py-3 rounded-lg border border-black/10">
+                  Join study group
+                </button>
               </div>
             </div>
           </div>
@@ -234,7 +237,9 @@ export default function DashboardPage() {
               </div>
 
               <div className="mt-6">
-                <button className="w-full px-4 py-3 rounded-lg border border-black/10">View all activity</button>
+                <button className="w-full px-4 py-3 rounded-lg border border-black/10">
+                  View all activity
+                </button>
               </div>
             </div>
           </div>

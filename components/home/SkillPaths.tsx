@@ -2,14 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { useKeenSlider } from "keen-slider/react";
+import type { KeenSliderInstance, KeenSliderPlugin } from "keen-slider";
 import { motion } from "framer-motion";
-import { Star, Users, Clock, GraduationCap, } from "lucide-react";
+import { Star, Users, Clock, GraduationCap } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import "keen-slider/keen-slider.min.css";
 
-// Autoplay Plugin with safe checks
-function AutoplayPlugin(ms = 3000) {
-  return (slider: any) => {
+/* =========================
+   Autoplay Plugin (typed properly)
+========================= */
+function AutoplayPlugin(ms = 3000): KeenSliderPlugin {
+  return (slider: KeenSliderInstance) => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
     let mouseOver = false;
     let paused = false;
@@ -17,15 +21,15 @@ function AutoplayPlugin(ms = 3000) {
 
     function clearNextTimeout() {
       if (timeout) clearTimeout(timeout);
+      timeout = null;
     }
 
     function nextTimeout() {
       clearNextTimeout();
       if (mouseOver || paused || !isActive) return;
+
       timeout = setTimeout(() => {
-        if (slider && slider.track && typeof slider.next === "function") {
-          slider.next();
-        }
+        slider.next();
       }, ms);
     }
 
@@ -36,6 +40,7 @@ function AutoplayPlugin(ms = 3000) {
         mouseOver = true;
         clearNextTimeout();
       });
+
       slider.container.addEventListener("mouseout", () => {
         mouseOver = false;
         nextTimeout();
@@ -67,7 +72,7 @@ function AutoplayPlugin(ms = 3000) {
 
 type SkillPath = {
   id: string;
-  level: string;
+  level: "Beginner" | "Intermediate" | "Advanced";
   title: string;
   desc: string;
   duration: string;
@@ -114,11 +119,14 @@ const skillPaths: SkillPath[] = [
 ];
 
 export default function SkillPaths() {
-  const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState<
+    "All" | "Beginner" | "Intermediate" | "Advanced"
+  >("All");
+
   const [sliderRef, slider] = useKeenSlider<HTMLDivElement>(
     {
       loop: true,
-      drag: true, // ✅ enables drag on desktop
+      drag: true,
       renderMode: "performance",
       slides: { perView: 1.05, spacing: 12 },
       breakpoints: {
@@ -135,13 +143,13 @@ export default function SkillPaths() {
 
   // ✅ Refresh KeenSlider when filter changes
   useEffect(() => {
-    if (slider) {
-      slider.current?.update();
-    }
+    slider.current?.update();
   }, [filter, slider]);
 
   const filtered =
-    filter === "All" ? skillPaths : skillPaths.filter((s) => s.level === filter);
+    filter === "All"
+      ? skillPaths
+      : skillPaths.filter((s) => s.level === filter);
 
   return (
     <section
@@ -163,26 +171,28 @@ export default function SkillPaths() {
 
           {/* Filters */}
           <div className="flex flex-wrap justify-center sm:justify-end gap-2 sm:gap-3">
-            {["All", "Beginner", "Intermediate", "Advanced"].map((lvl) => (
-              <button
-                key={lvl}
-                onClick={() => setFilter(lvl)}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm font-semibold transition ${
-                  filter === lvl
-                    ? "bg-[#00b8db] text-white"
-                    : "bg-white border border-gray-300 text-gray-700 hover:bg-[#00b8db] text-gray-700"
-                }`}
-              >
-                {lvl}
-              </button>
-            ))}
+            {(["All", "Beginner", "Intermediate", "Advanced"] as const).map(
+              (lvl) => (
+                <button
+                  key={lvl}
+                  onClick={() => setFilter(lvl)}
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm font-semibold transition ${
+                    filter === lvl
+                      ? "bg-[#00b8db] text-white"
+                      : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  {lvl}
+                </button>
+              )
+            )}
           </div>
         </div>
 
         {/* Carousel */}
         <div ref={sliderRef} className="keen-slider">
           {filtered.map((path, i) => (
-            <div key={i} id={path.id} className="keen-slider__slide">
+            <div key={path.id} id={path.id} className="keen-slider__slide">
               <motion.div
                 className="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden flex flex-col"
                 initial={{ opacity: 0, y: 20 }}
@@ -191,11 +201,14 @@ export default function SkillPaths() {
                 transition={{ delay: 0.15 * i, duration: 0.6 }}
               >
                 {/* Image */}
-                <div className="relative">
-                  <img
+                <div className="relative h-40 sm:h-44 w-full">
+                  <Image
                     src={path.img}
                     alt={path.title}
-                    className="w-full h-40 sm:h-44 object-cover"
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-cover"
+                    priority={i === 0}
                   />
                   <span className="absolute top-2 right-2 bg-[#00b8db] text-white text-xs font-semibold px-2 py-1 rounded-full shadow">
                     Skill

@@ -15,12 +15,9 @@ import {
   Book,
   Laptop,
   Gift,
-  Calendar,
   Settings,
   ShieldCheck,
-  MessagesSquare,
   DollarSign,
-  UserPlus,
 } from "lucide-react";
 
 /* ------------------------------ utils ------------------------------ */
