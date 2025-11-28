@@ -1,10 +1,16 @@
-// app/api/courses/[id]/route.ts
+// app/api/course/courses/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import { Course } from "@/models/courses/Course";
 import mongoose from "mongoose";
 
-type Params = { params: { id: string } };
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+// ✅ Next 15+ expects params to be async
+type Params = {
+  params: Promise<{ id: string }>;
+};
 
 /* =========================
    Helpers
@@ -15,18 +21,21 @@ function isValidId(id: string) {
 
 function cleanArray(a: unknown): string[] | undefined {
   if (a == null) return undefined;
+
   if (Array.isArray(a)) {
     return a
       .map((v) => String(v))
       .map((s) => s.trim())
       .filter(Boolean);
   }
+
   if (typeof a === "string") {
     return a
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
   }
+
   return undefined;
 }
 
@@ -121,11 +130,11 @@ type PartialCourseUpdate = {
 };
 
 /* =========================
-   GET /api/courses/[id]
+   GET /api/course/courses/[id]
 ========================= */
 export async function GET(_req: NextRequest, { params }: Params) {
   await dbConnect();
-  const { id } = params;
+  const { id } = await params; // ✅ await params
 
   if (!isValidId(id)) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
@@ -140,21 +149,20 @@ export async function GET(_req: NextRequest, { params }: Params) {
     return NextResponse.json(doc);
   } catch (e: unknown) {
     console.error("GET /api/course/courses/[id] error:", e);
-    const message =
-      e instanceof Error ? e.message : "Failed to load course";
+    const message = e instanceof Error ? e.message : "Failed to load course";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 /* =========================
-   PATCH /api/courses/[id]
+   PATCH /api/course/courses/[id]
    - Partial update
    - Required fields (if provided) cannot be blank
    - `href` is NOT accepted (derived from slug/title)
 ========================= */
 export async function PATCH(req: NextRequest, { params }: Params) {
   await dbConnect();
-  const { id } = params;
+  const { id } = await params; // ✅ await params
 
   if (!isValidId(id)) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
@@ -229,22 +237,21 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     ) {
       return NextResponse.json(
         { error: "A course with a similar title already exists." },
-        { status: 409 },
+        { status: 409 }
       );
     }
 
-    const message =
-      e instanceof Error ? e.message : "Update failed";
+    const message = e instanceof Error ? e.message : "Update failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 /* =========================
-   DELETE /api/courses/[id]
+   DELETE /api/course/courses/[id]
 ========================= */
 export async function DELETE(_req: NextRequest, { params }: Params) {
   await dbConnect();
-  const { id } = params;
+  const { id } = await params; // ✅ await params
 
   if (!isValidId(id)) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
@@ -255,11 +262,11 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     if (!deleted) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+
     return new NextResponse(null, { status: 204 });
   } catch (e: unknown) {
     console.error("DELETE /api/course/courses/[id] error:", e);
-    const message =
-      e instanceof Error ? e.message : "Delete failed";
+    const message = e instanceof Error ? e.message : "Delete failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
