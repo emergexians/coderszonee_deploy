@@ -26,6 +26,7 @@ import {
   PlusCircle,
   MinusCircle,
   Pencil,
+  FileText,
 } from "lucide-react";
 
 /* =========================
@@ -469,6 +470,10 @@ export default function CoursesAdmin() {
   const defaultCategory = CATEGORY_LIST[0];
   const defaultSub = CATEGORY_MAP[defaultCategory][0];
 
+  // Created course ID (for redirect after creation)
+  const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
+
+
   const [formCourse, setFormCourse] = useState<CourseFormState>({
     title: "",
     cover: "",
@@ -641,6 +646,8 @@ useEffect(() => {
       const created = data as Course;
       if (created._id) setCourses((p) => [created, ...p]);
       else setCourses(await getList<Course>("/api/course/courses"));
+
+      setCreatedCourseId(created._id); // 🔥 important
 
       showToast("Course added", "success");
       setOpenCreate(false);
@@ -842,6 +849,12 @@ useEffect(() => {
             >
               <Pencil size={16} /> Edit
             </button>
+            <a
+              href={`/admin/course/courses/${c._id}/landing`}
+              className="inline-flex items-center gap-1 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-sm text-orange-700 hover:bg-orange-100"
+            >
+              <FileText size={16} /> Landing
+            </a>
             <button
               onClick={() => askDelete(c._id, c.title)}
               className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm hover:bg-red-50 hover:text-red-600"
@@ -989,43 +1002,75 @@ useEffect(() => {
           }}
           onSubmit={handleCreate}
         />
+        {createdCourseId && (
+  <div className="mt-6 border-t pt-4 flex justify-end">
+    <button
+      type="button"
+      onClick={() => {
+        window.location.href = `/admin/course/courses/${createdCourseId}/landing`;
+      }}
+      className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+    >
+      ➕ Add Landing Page
+    </button>
+  </div>
+)}
+
       </Modal>
 
-      {/* Edit Modal */}
-      <Modal
-        open={openEdit}
-        onClose={() => {
+     {/* Edit Modal */}
+<Modal
+  open={openEdit}
+  onClose={() => {
+    setOpenEdit(false);
+    setEditingId(null);
+    resetForms();
+  }}
+  title="Edit Course"
+  wide
+>
+  {editLoading ? (
+    <div className="flex items-center justify-center py-12 text-sm text-gray-600">
+      <Loader2 className="mr-2 animate-spin" size={16} /> Loading…
+    </div>
+  ) : (
+    <>
+      <CourseForm
+        formCourse={formCourse}
+        setFormCourse={setFormCourse}
+        syllabusCourse={syllabusCourse}
+        setSyllabusCourse={setSyllabusCourse}
+        subOptions={subOptions}
+        livePreview={livePreview}
+        perksPreview={perksPreview}
+        submitting={editing}
+        onCancel={() => {
           setOpenEdit(false);
           setEditingId(null);
           resetForms();
         }}
-        title="Edit Course"
-        wide
-      >
-        {editLoading ? (
-          <div className="flex items-center justify-center py-12 text-sm text-gray-600">
-            <Loader2 className="mr-2 animate-spin" size={16} /> Loading…
-          </div>
-        ) : (
-          <CourseForm
-            formCourse={formCourse}
-            setFormCourse={setFormCourse}
-            syllabusCourse={syllabusCourse}
-            setSyllabusCourse={setSyllabusCourse}
-            subOptions={subOptions}
-            livePreview={livePreview}
-            perksPreview={perksPreview}
-            submitting={editing}
-            onCancel={() => {
-              setOpenEdit(false);
-              setEditingId(null);
-              resetForms();
-            }}
-            onSubmit={handleUpdate}
-            isEdit
-          />
-        )}
-      </Modal>
+        onSubmit={handleUpdate}
+        isEdit
+      />
+
+      {editingId && (
+  <div className="mt-6 border-t pt-4 flex justify-end">
+    <button
+      type="button"
+      onClick={() =>
+        window.location.href = `/admin/course/courses/${editingId}/landing`
+      }
+      className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+    >
+      ✏️ Edit Landing Page
+    </button>
+  </div>
+)}
+
+    </>
+  )}
+</Modal>
+
 
       {/* Delete Confirm */}
       <Modal
@@ -1384,6 +1429,8 @@ function CourseForm({
           )}
           {isEdit ? "Save changes" : "Create"}
         </button>
+
+
       </div>
     </form>
   );

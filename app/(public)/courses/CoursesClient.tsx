@@ -30,6 +30,7 @@ type Course = {
   rating?: number;
   students?: number;
   desc?: string;
+  hasLandingPage?: boolean;
 };
 
 // fallback slugify (matches server logic closely)
@@ -213,7 +214,11 @@ export default function CoursesClient() {
           variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } }}
         >
           {items.map((c) => {
-            const href = c.href || (c.slug ? `/courses/${c.slug}` : `/courses/${slugify(c.title || "")}`);
+            // If course has a published landing page, go there first
+            // Otherwise go directly to course details
+            const href = c.hasLandingPage
+              ? `/landing/${c._id}`
+              : c.href || (c.slug ? `/courses/${c.slug}` : `/courses/${slugify(c.title || "")}`);
 
             return (
               <motion.div
@@ -232,6 +237,12 @@ export default function CoursesClient() {
                       <Image src={c.cover} alt={c.title} fill className="object-cover transition group-hover:scale-105" />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400">No image</div>
+                    )}
+                    {/* Badge for courses with landing pages */}
+                    {c.hasLandingPage && (
+                      <div className="absolute top-2 right-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-lg">
+                        ✨ Featured
+                      </div>
                     )}
                   </div>
 

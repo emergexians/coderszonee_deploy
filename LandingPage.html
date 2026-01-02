@@ -1,0 +1,728 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Full Stack AI Engineer Course</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+      <!-- favicons Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="https://coderszonee.com/assets/images/favicons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="https://coderszonee.com/assets/images/favicons/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="https://coderszonee.com/assets/images/favicons/favicon-16x16.png" />
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    html, body {
+      scroll-behavior: smooth;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    /* HERO */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      text-align: center;
+      background: linear-gradient(135deg, #0d6efd, #6610f2);
+      color: #fff;
+      padding: 80px 20px;
+    }
+
+    .hero-logo {
+      max-height: 70px;
+      filter: drop-shadow(0 6px 18px rgba(0,0,0,0.35));
+    }
+
+    .hero .btn-outline-light {
+      border-width: 2px;
+    }
+
+    .hero .btn-outline-light:hover {
+      background: #fff;
+      color: #000;
+    }
+    .section-padding { padding: 90px 20px; }
+    .testimonial {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 25px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      transition: transform .3s ease;
+    }
+    .testimonial:hover { transform: translateY(-8px); }
+    .cta-highlight {
+      background: linear-gradient(135deg, #0d6efd, #6610f2);
+      color: #fff;
+      padding: 30px;
+      border-radius: 16px;
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .affiliation img {
+      max-height: 60px;
+      filter: grayscale(100%);
+      transition: filter .3s;
+    }
+    .affiliation img:hover { filter: grayscale(0%); }
+
+.btn-warning {
+  box-shadow: 0 10px 30px rgba(255,193,7,0.35);
+}
+.btn-warning:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 40px rgba(255,193,7,0.5);
+}
+
+.stack-card {
+  border-radius: 20px;
+  transition: all 0.35s ease;
+}
+
+.stack-card:hover {
+  transform: translateY(-8px) scale(1.02);
+}
+
+.ai-glow:hover {
+  box-shadow:
+    0 0 0 1px rgba(13,110,253,0.15),
+    0 20px 45px rgba(13,110,253,0.35),
+    0 0 25px rgba(13,110,253,0.25);
+}
+
+
+.who-card {
+  border-radius: 20px;
+  background: #ffffff;
+  transition: all 0.35s ease;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+}
+
+.who-card:hover {
+  transform: translateY(-8px) scale(1.02);
+}
+
+.ai-glow:hover {
+  box-shadow:
+    0 0 0 1px rgba(13,110,253,0.15),
+    0 20px 45px rgba(13,110,253,0.35),
+    0 0 25px rgba(13,110,253,0.25);
+}
+
+
+.logo-marquee {
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.logo-track {
+  display: flex;
+  gap: 30px;
+  width: max-content;
+  animation: scrollLogos 25s linear infinite;
+}
+
+@keyframes scrollLogos {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.affiliation-card {
+  min-width: 200px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 22px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+  transition: all 0.3s ease;
+}
+
+.affiliation-card img {
+  max-height: 42px;
+  filter: grayscale(100%);
+  opacity: 0.85;
+  transition: all 0.3s ease;
+}
+
+.affiliation-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.12);
+}
+
+.affiliation-card:hover img {
+  filter: grayscale(0%);
+  opacity: 1;
+}
+
+
+.register-card {
+  border-radius: 22px;
+}
+
+.register-card .form-control {
+  border-radius: 12px;
+}
+
+.register-card button {
+  box-shadow: 0 10px 30px rgba(13,110,253,0.35);
+}
+
+.register-card button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 45px rgba(13,110,253,0.55);
+}
+
+
+
+.footer-ai {
+  background: radial-gradient(circle at top, #0b1020, #050812);
+  color: #cbd5e1;
+  padding: 70px 20px 35px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.footer-logo {
+  max-height: 60px;
+}
+
+.footer-desc {
+  font-size: 14px;
+  line-height: 1.6;
+  opacity: 0.85;
+}
+
+.footer-title {
+  font-weight: 600;
+  margin-bottom: 14px;
+  color: #ffffff;
+}
+
+.footer-links,
+.footer-contact {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.footer-links li,
+.footer-contact li {
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.footer-links a {
+  color: #cbd5e1;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.footer-links a:hover {
+  color: #f7a612;
+  padding-left: 4px;
+}
+
+.footer-social {
+  display: flex;
+  gap: 12px;
+}
+
+.footer-social a {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  color: #f7a612;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.footer-social a:hover {
+  background: #f7a612;
+  color: #000;
+  transform: translateY(-3px);
+}
+
+.footer-divider {
+  border-color: rgba(255,255,255,0.08);
+  margin: 40px 0 20px;
+}
+
+.footer-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+  </style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="container">
+    <img src="assets/logos/logo_f.png" alt="Coderszonee Institute Logo" class="hero-logo mb-4">
+
+    <h1 class="display-4 fw-bold">
+      Full Stack <span class="text-warning">AI Engineer</span>
+    </h1>
+
+    <p class="lead mt-3">
+      Build Intelligent Web Applications using AI, APIs & Cloud Technologies
+    </p>
+
+    <p class="fw-semibold mt-4">
+      🚀 2–3x Salary Growth &nbsp;|&nbsp;
+      🧠 Real-World AI Projects &nbsp;|&nbsp;
+      🌍 Industry-Mentored Training
+    </p>
+
+    <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap">
+      <a href="#register" class="btn btn-warning btn-lg px-5">Get Started</a>
+      <a href="#curriculum" class="btn btn-outline-light btn-lg px-4">View Curriculum</a>
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= STACK SECTION ================= -->
+<section class="section-padding bg-light" id="stack">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="fw-bold">Technology Stack You Will Master</h2>
+      <p class="text-muted mt-2">Hands-on tools used in real-world AI applications</p>
+    </div>
+
+    <div class="row g-4">
+
+      <!-- Frontend -->
+      <div class="col-md-3">
+        <div class="card h-100 border-0 shadow-sm text-center p-4 stack-card ai-glow">
+          <lottie-player
+            src="https://assets10.lottiefiles.com/packages/lf20_yd8fbnml.json"
+            background="transparent"
+            speed="1"
+            style="width:80px;height:80px;margin:0 auto;"
+            loop autoplay>
+          </lottie-player>
+
+          <h5 class="fw-semibold mt-3">Frontend</h5>
+          <span class="badge bg-success mb-2">Beginner Friendly</span>
+          <p class="text-muted small">
+            HTML5, CSS3, Bootstrap, Responsive Design
+          </p>
+          <hr>
+          <p class="fw-semibold small mb-1">Projects you’ll build</p>
+          <p class="text-muted small mb-0">
+            Landing Pages, Dashboards, Portfolio Websites
+          </p>
+        </div>
+      </div>
+
+      <!-- JavaScript -->
+      <div class="col-md-3">
+        <div class="card h-100 border-0 shadow-sm text-center p-4 stack-card ai-glow">
+          <lottie-player
+            src="https://assets6.lottiefiles.com/packages/lf20_w51pcehl.json"
+            background="transparent"
+            speed="1"
+            style="width:80px;height:80px;margin:0 auto;"
+            loop autoplay>
+          </lottie-player>
+
+          <h5 class="fw-semibold mt-3">JavaScript & APIs</h5>
+          <span class="badge bg-primary mb-2">Core Skill</span>
+          <p class="text-muted small">
+            ES6+, REST APIs, Async Programming
+          </p>
+          <hr>
+          <p class="fw-semibold small mb-1">Projects you’ll build</p>
+          <p class="text-muted small mb-0">
+            API-based Apps, Real-time Forms, Dynamic Web Apps
+          </p>
+        </div>
+      </div>
+
+      <!-- Backend -->
+      <div class="col-md-3">
+        <div class="card h-100 border-0 shadow-sm text-center p-4 stack-card ai-glow">
+          <lottie-player
+            src="https://assets4.lottiefiles.com/packages/lf20_qp1q7mct.json"
+            background="transparent"
+            speed="1"
+            style="width:80px;height:80px;margin:0 auto;"
+            loop autoplay>
+          </lottie-player>
+
+          <h5 class="fw-semibold mt-3">Backend</h5>
+          <span class="badge bg-warning text-dark mb-2">Advanced</span>
+          <p class="text-muted small">
+            PHP, SQL, APIs, Authentication & Authorization
+          </p>
+          <hr>
+          <p class="fw-semibold small mb-1">Projects you’ll build</p>
+          <p class="text-muted small mb-0">
+            Login Systems, Admin Panels, CRUD Applications
+          </p>
+        </div>
+      </div>
+
+      <!-- AI -->
+      <div class="col-md-3">
+        <div class="card h-100 border-0 shadow-sm text-center p-4 stack-card ai-glow">
+          <lottie-player
+            src="https://assets2.lottiefiles.com/packages/lf20_vnikrcia.json"
+            background="transparent"
+            speed="1"
+            style="width:80px;height:80px;margin:0 auto;"
+            loop autoplay>
+          </lottie-player>
+
+          <h5 class="fw-semibold mt-3">AI & Machine Learning</h5>
+          <span class="badge bg-danger mb-2">High Demand</span>
+          <p class="text-muted small">
+            AI APIs, ML Basics, Programming, Smart Systems
+          </p>
+          <hr>
+          <p class="fw-semibold small mb-1">Projects you’ll build</p>
+          <p class="text-muted small mb-0">
+            AI Chatbots, Recommendation Systems, AI Web Apps
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= CURRICULUM DOWNLOAD CTA ================= -->
+<section class="section-padding bg-dark text-light" id="curriculum">
+  <div class="container">
+    <div class="row align-items-center">
+      
+      <!-- Text -->
+      <div class="col-md-8">
+        <h2 class="fw-bold">Download Full Course Curriculum</h2>
+        <p class="text-secondary mt-2 mb-0">
+          Get a detailed breakdown of modules, projects, tools, and career outcomes
+        </p>
+      </div>
+
+      <!-- CTA Button -->
+      <div class="col-md-4 text-md-end mt-4 mt-md-0">
+        <a href="assets/curriculum-full-stack-ai.pdf" download
+           class="btn btn-warning btn-lg px-4">
+          Download Curriculum
+        </a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ================= WHOM IS THIS FOR ================= -->
+<section class="section-padding bg-light" id="who">
+  <div class="container">
+
+    <!-- Heading -->
+    <div class="text-center mb-5">
+      <h2 class="fw-bold">Who Is This Course For?</h2>
+      <p class="text-muted mt-2">
+        Built for ambitious learners ready to work on real-world AI systems
+      </p>
+    </div>
+
+    <!-- Cards -->
+    <div class="row g-4">
+
+      <!-- Students -->
+      <div class="col-md-4">
+        <div class="card h-100 border-0 p-4 text-center who-card ai-glow">
+          <lottie-player
+            src="https://assets5.lottiefiles.com/packages/lf20_kyu7xb1v.json"
+            background="transparent"
+            speed="1"
+            style="width: 90px; height: 90px; margin: 0 auto;"
+            loop autoplay>
+          </lottie-player>
+
+          <h5 class="fw-semibold mt-3">Students</h5>
+          <p class="text-muted mb-0">
+            Build strong fundamentals, real projects, and an industry-ready portfolio
+          </p>
+        </div>
+      </div>
+
+      <!-- Professionals -->
+      <div class="col-md-4">
+        <div class="card h-100 border-0 p-4 text-center who-card ai-glow">
+          <lottie-player
+            src="https://assets3.lottiefiles.com/packages/lf20_qhrndegx.json"
+            background="transparent"
+            speed="1"
+            style="width: 90px; height: 90px; margin: 0 auto;"
+            loop autoplay>
+          </lottie-player>
+
+          <h5 class="fw-semibold mt-3">Working Professionals</h5>
+          <p class="text-muted mb-0">
+            Upskill and transition into high-paying AI & full stack roles
+          </p>
+        </div>
+      </div>
+
+      <!-- Entrepreneurs -->
+      <div class="col-md-4">
+        <div class="card h-100 border-0 p-4 text-center who-card ai-glow">
+          <lottie-player
+            src="https://assets3.lottiefiles.com/packages/lf20_tfb3estd.json"
+            background="transparent"
+            speed="1"
+            style="width: 90px; height: 90px; margin: 0 auto;"
+            loop autoplay>
+          </lottie-player>
+
+          <h5 class="fw-semibold mt-3">Entrepreneurs</h5>
+          <p class="text-muted mb-0">
+            Build AI-powered products, MVPs, and scalable startups
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CTA -->
+    <div class="text-center mt-5">
+      <p class="fw-semibold mb-3">Not sure if this course is right for you?</p>
+      <a href="https://api.whatsapp.com/send/?phone=%2B918601530993&text&type=phone_number&app_absent=0" target="_blank" class="btn btn-outline-primary btn-lg px-4">
+        💬 Talk to Our Experts
+      </a>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ================= TESTIMONIALS ================= -->
+<section class="section-padding" id="testimonials">
+  <div class="container">
+    <h2 class="text-center mb-5">What Our Students Say</h2>
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="testimonial">"This course helped me land an AI developer job in 6 months."<br><strong>- Ankit</strong></div>
+      </div>
+      <div class="col-md-4">
+        <div class="testimonial">"Perfect balance of Full Stack and AI concepts."<br><strong>- Sarah</strong></div>
+      </div>
+      <div class="col-md-4">
+        <div class="testimonial">"Hands-on projects and real-world learning."<br><strong>- Rahul</strong></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= REGISTRATION FORM ================= -->
+<section class="section-padding bg-light" id="register">
+  <div class="container">
+
+    <div class="row align-items-center g-5">
+
+      <!-- Left Content -->
+      <div class="col-md-6">
+        <span class="badge bg-warning mb-3">🚀 Admissions Open</span>
+        <h2 class="fw-bold">
+          Become a <span class="text-warning">Certified Full Stack AI Engineer</span>
+        </h2>
+
+        <p class="text-muted mt-3">
+          Learn by building real-world AI systems with expert mentorship
+          and career guidance.
+        </p>
+
+        <ul class="list-unstyled mt-4">
+          <li class="mb-2">✅ Industry-ready AI projects</li>
+          <li class="mb-2">✅ Resume & interview preparation</li>
+          <li class="mb-2">✅ Limited seats for focused mentoring</li>
+        </ul>
+      </div>
+
+      <!-- Form Card -->
+      <div class="col-md-6">
+        <div class="card border-0 shadow-lg p-4 p-md-5 register-card">
+
+          <h4 class="fw-semibold mb-1">Register Now</h4>
+          <p class="text-muted small mb-4">
+            Secure your spot — our team will contact you shortly
+          </p>
+
+          <form method="POST" action="register.php">
+
+            <div class="form-floating mb-3">
+              <input type="text" name="name" class="form-control" id="name" placeholder="Full Name" required>
+              <label for="name">Full Name</label>
+            </div>
+
+            <div class="form-floating mb-3">
+              <input type="email" name="email" class="form-control" id="email" placeholder="Email Address" required>
+              <label for="email">Email Address</label>
+            </div>
+
+            <div class="form-floating mb-4">
+              <input type="text" name="phone" class="form-control" id="phone" placeholder="Phone Number" required>
+              <label for="phone">Phone Number</label>
+            </div>
+
+            <button type="submit" class="btn btn-lg w-100" style="background-color: #f7a612;">
+              Submit Application
+            </button>
+
+            <p class="small text-muted mt-3 text-center">
+              🔒 We respect your privacy. No spam, ever.
+            </p>
+
+          </form>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= AFFILIATION SECTION ================= -->
+<section class="section-padding bg-light" id="affiliation">
+  <div class="container">
+
+    <!-- Heading -->
+    <div class="text-center mb-4">
+      <h2 class="fw-bold">Tools & Platforms You’ll Work With</h2>
+      <p class="text-muted mt-2">
+        Industry-standard technologies used for learning and projects
+      </p>
+    </div>
+
+    <!-- Marquee -->
+    <div class="logo-marquee mt-4">
+      <div class="logo-track">
+
+        <div class="affiliation-card" title="Used for AI & LLM integrations">
+          <img src="assets/logos/openai.svg" alt="OpenAI">
+        </div>
+
+        <div class="affiliation-card" title="Cloud, APIs & deployment tools">
+          <img src="assets/logos/google.svg" alt="Google">
+        </div>
+
+        <div class="affiliation-card" title="Backend, cloud & developer tools">
+          <img src="assets/logos/microsoft.svg" alt="Microsoft">
+        </div>
+
+        <div class="affiliation-card" title="Hosting & scalable infrastructure">
+          <img src="assets/logos/aws.svg" alt="AWS">
+        </div>
+
+        <!-- Duplicate for seamless loop -->
+        <div class="affiliation-card">
+          <img src="assets/logos/openai.svg" alt="">
+        </div>
+        <div class="affiliation-card">
+          <img src="assets/logos/google.svg" alt="">
+        </div>
+        <div class="affiliation-card">
+          <img src="assets/logos/microsoft.svg" alt="">
+        </div>
+        <div class="affiliation-card">
+          <img src="assets/logos/aws.svg" alt="">
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Disclaimer -->
+    <p class="text-center small text-muted mt-4">
+      Logos represent platforms used for educational and project-based learning purposes.
+    </p>
+
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer class="footer-ai">
+  <div class="container">
+
+    <div class="row gy-5 align-items-start">
+
+      <!-- Brand -->
+      <div class="col-lg-4">
+        <img src="assets/logos/logo_f.png" alt="Coderszonee" class="footer-logo mb-3">
+        <p class="footer-desc">
+          Building future-ready <strong>AI & Full Stack Engineers</strong> through
+          real-world projects, mentorship, and industry-grade curriculum.
+        </p>
+      </div>
+
+      <!-- Navigation -->
+      <div class="col-lg-2 col-md-4">
+        <h6 class="footer-title">Explore</h6>
+        <ul class="footer-links">
+          <li><a href="#hero">Home</a></li>
+          <li><a href="#stack">Curriculum</a></li>
+          <li><a href="#who">Who It’s For</a></li>
+          <li><a href="#register">Enroll Now</a></li>
+        </ul>
+      </div>
+
+      <!-- Contact -->
+      <div class="col-lg-3 col-md-4">
+        <h6 class="footer-title">Contact</h6>
+        <ul class="footer-contact">
+          <li>info@coderszonee.com</li>
+          <li>+91 95991 30993, +91 86015 30993</li>
+          <li>Dwarka Sec-14, New Delhi-110078</li>
+        </ul>
+      </div>
+
+      <!-- Social -->
+      <div class="col-lg-3 col-md-4">
+        <h6 class="footer-title">Community</h6>
+        <div class="footer-social">
+          <a href="https://www.facebook.com/share/163Kio1MvZ/?mibextid=" title="Facebook">fb</a>
+          <a href="https://instagram.com/coderszonee" title="Instagram">ig</a>
+          <a href="https://www.youtube.com/@coderszonee" title="YouTube">yt</a>
+        </div>
+        <a href="#register" class="btn btn-sm mt-3 px-4" style="background-color: #f7a612;">
+          Start Your AI Journey
+        </a>
+      </div>
+
+    </div>
+
+    <hr class="footer-divider">
+
+    <!-- Bottom -->
+    <div class="footer-bottom">
+      <span>© 2025 Coderszonee. All Rights Reserved.</span>
+      <span>Designed for the AI-Driven Future</span>
+    </div>
+
+  </div>
+</footer>
+
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+
+</body>
+</html>
+

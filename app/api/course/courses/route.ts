@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import { Course } from "@/models/courses/Course";
+import { CourseLandingPage } from "@/models/courses/CourseLandingPage";
 
 function parseIntOr(defaultVal: number, v?: string | null) {
   const n = Number(v);
@@ -117,7 +118,26 @@ export async function GET(req: NextRequest) {
         .lean({ virtuals: true }), // ensure href/slug virtuals in response
     ]);
 
-    return NextResponse.json({ items, total, page, limit });
+    // Check which courses have published landing pages
+    const courseIds = items.map((c: any) => c._id);
+    const landingPages = await CourseLandingPage.find({
+      courseId: { $in: courseIds },
+      published: true,
+    })
+      .select("courseId")
+      .lean();
+
+    const landingPageSet = new Set(
+      landingPages.map((lp: any) => String(lp.courseId))
+    );
+
+    // Add hasLandingPage flag to each course
+    const itemsWithLanding = items.map((c: any) => ({
+      ...c,
+      hasLandingPage: landingPageSet.has(String(c._id)),
+    }));
+
+    return NextResponse.json({ items: itemsWithLanding, total, page, limit });
   } catch (e: unknown) {
     console.error("GET /api/course/courses error:", e);
     const message =
