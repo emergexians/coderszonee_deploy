@@ -103,16 +103,16 @@ export default function LandingClient({
       {/* ================= STACK ================= */}
       <section 
         id="stack" 
-        className="py-24 relative overflow-hidden"
-        style={{
-          background: "linear-gradient(135deg,violet-300 100%, #6610f2, #6610f2)",
-        }}
+        className="py-24 relative overflow-hidden bg-gradient-to-r from-purple-600 via-indigo-500 to-blue-600"
+        // style={{
+          // background: "linear-gradient(135deg, violet-300 0%, indigo-300 50%, blue-300 100%)",
+        // }}
       >
         <div className="max-w-6xl mx-auto px-6 relative z-10">
-          <h2 className="text-center text-4xl font-bold text-gray-900 mb-3">
+          <h2 className="text-center text-4xl font-bold text-white-900 mb-3">
             Technology Stack You Will Master
           </h2>
-          <p className="text-center text-gray-700 mb-12">
+          <p className="text-center text-white-700 mb-12">
             Hands-on tools used in real-world AI applications
           </p>
 
@@ -344,7 +344,7 @@ export default function LandingClient({
 
       {/* ================= REGISTER CTA ================= */}
       <section className="py-24 bg-white">
-        <div className="max-w-4xl mx-auto px-6 text-center">
+        <div className="max-w-4xl mx-auto px-6 text-center text-black">
           <h2 className="text-3xl font-bold">
             Start Your Journey Today
           </h2>

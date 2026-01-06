@@ -6,6 +6,17 @@ import LandingPagesAdmin from "@/components/admin/landing-pages/LandingPagesAdmi
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+interface ICourseLandingPage {
+  _id: any;
+  courseId: any;
+  title: string;
+  subtitle: string;
+  offerings?: Array<{ text: string }>;
+  techStacks?: Array<{ name: string; description: string; projects: string[] }>;
+  audience?: Array<{ title: string; description: string }>;
+  tools?: Array<{ image: string; alt?: string }>;
+}
+
 export default async function AdminCourseLandingPage({
   params,
 }: {
@@ -15,7 +26,7 @@ export default async function AdminCourseLandingPage({
 
   const landing = await CourseLandingPage.findOne({
     courseId: params.courseId,
-  }).lean();
+  }).lean<ICourseLandingPage>();
 
   const safeLanding = landing
     ? {
