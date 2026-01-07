@@ -39,7 +39,7 @@ function extractIdFromPayload(payload: TokenPayload | null | undefined): string 
   return null;
 }
 
-export async function getCurrentUser(): Promise<SessionUser | null> {
+export async function getCurrentUser(p0: null): Promise<SessionUser | null> {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;

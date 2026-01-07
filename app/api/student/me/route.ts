@@ -14,7 +14,8 @@ type UserDocWithLegacy = UserDoc & {
 export async function GET() {
   try {
     // current user from server helper (returns { id, name, email, urn? } | null)
-    const current = await getCurrentUser(null);
+    const current = await getCurrentUser(); // ✅ no argument
+
     if (!current) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -34,7 +35,7 @@ export async function GET() {
     // Otherwise fetch minimal fields from DB using findById (NOT find)
     await dbConnect();
 
-    // NOTE: use findById (single doc) and .lean<UserDocWithLegacy | null>()
+    // Use findById (single doc) and .lean<UserDocWithLegacy | null>()
     const user = await User.findById(current.id, {
       name: 1,
       urn: 1,

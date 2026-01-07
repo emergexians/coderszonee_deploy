@@ -2,6 +2,7 @@
 // components/admin/courses/CoursesAdmin.tsx
 "use client";
 
+
 import {
   useEffect,
   useMemo,
@@ -26,7 +27,9 @@ import {
   PlusCircle,
   MinusCircle,
   Pencil,
+  FileText,
 } from "lucide-react";
+
 
 /* =========================
    Types
@@ -35,6 +38,7 @@ interface SyllabusSection {
   title: string;
   items?: string[];
 }
+
 
 interface Course {
   _id: string;
@@ -53,9 +57,11 @@ interface Course {
   syllabus?: SyllabusSection[];
 }
 
+
 type ToastState =
   | { show: false }
   | { show: true; type: "success" | "error" | "info"; msg: string };
+
 
 interface CourseFormState {
   title: string;
@@ -70,10 +76,12 @@ interface CourseFormState {
   perks: string;
 }
 
+
 /* =========================
    Constants
 ========================= */
 const LEVELS = ["Beginner", "Intermediate", "Advanced"] as const;
+
 
 const CATEGORY_MAP: Record<string, string[]> = {
   "Web Development": [
@@ -96,12 +104,14 @@ const CATEGORY_MAP: Record<string, string[]> = {
 };
 const CATEGORY_LIST = Object.keys(CATEGORY_MAP);
 
+
 /* =========================
    UI helpers
 ========================= */
 function cx(...arr: Array<string | false | null | undefined>) {
   return arr.filter(Boolean).join(" ");
 }
+
 
 function Pill({
   tone = "gray",
@@ -124,6 +134,7 @@ function Pill({
   );
 }
 
+
 function Field({
   label,
   required,
@@ -145,6 +156,7 @@ function Field({
     </div>
   );
 }
+
 
 function SkeletonRow() {
   return (
@@ -174,14 +186,17 @@ function SkeletonRow() {
   );
 }
 
+
 /* =========================
    Tiny Uploader (URL + Local Upload)
 ========================= */
+
 
 type UploadResponse = {
   url?: string;
   error?: string;
 };
+
 
 function UrlOrUpload({
   value,
@@ -199,6 +214,7 @@ function UrlOrUpload({
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+
   async function handleFile(file: File) {
     setUploading(true);
     setErr(null);
@@ -207,17 +223,21 @@ function UrlOrUpload({
       body.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body });
 
+
       const ct = res.headers.get("content-type") || "";
       const isJson = ct.toLowerCase().includes("application/json");
 
+
       let dataJson: UploadResponse | null = null;
       let dataText = "";
+
 
       if (isJson) {
         dataJson = (await res.json().catch(() => null)) as UploadResponse | null;
       } else {
         dataText = await res.text();
       }
+
 
       if (!res.ok || !isJson || !dataJson) {
         let msg: string | undefined;
@@ -229,6 +249,7 @@ function UrlOrUpload({
         throw new Error(msg || `Upload failed (${res.status})`);
       }
 
+
       if (!dataJson.url) throw new Error("Upload did not return a URL");
       onChange(String(dataJson.url));
     } catch (e: unknown) {
@@ -238,6 +259,7 @@ function UrlOrUpload({
       setUploading(false);
     }
   }
+
 
   return (
     <div className="flex gap-2">
@@ -273,6 +295,7 @@ function UrlOrUpload({
     </div>
   );
 }
+
 
 /* =========================
    Syllabus Builder
@@ -321,7 +344,9 @@ function SyllabusBuilder({
     onChange(n);
   }
 
+
   const hasAtLeastOne = value.length > 0 && value[0].title.trim() !== "";
+
 
   return (
     <div className="space-y-3">
@@ -338,11 +363,13 @@ function SyllabusBuilder({
         </button>
       </div>
 
+
       {value.length === 0 && (
         <div className="rounded-lg border bg-gray-50 p-4 text-sm text-gray-500">
           No sections yet. Click “Add section”.
         </div>
       )}
+
 
       <div className="space-y-4">
         {value.map((sec, i) => (
@@ -363,6 +390,7 @@ function SyllabusBuilder({
                 <MinusCircle size={16} /> Remove
               </button>
             </div>
+
 
             <div className="mt-3 space-y-2">
               {(sec.items || []).map((it, j) => (
@@ -395,12 +423,14 @@ function SyllabusBuilder({
         ))}
       </div>
 
+
       {required && !hasAtLeastOne && (
         <p className="text-xs text-red-600">Please add at least one section with a title.</p>
       )}
     </div>
   );
 }
+
 
 /* =========================
    Fetch helpers
@@ -416,6 +446,7 @@ async function safeJson<T>(res: Response, fallback: T): Promise<T> {
     return fallback;
   }
 }
+
 
 async function getList<T = unknown>(url: string): Promise<T[]> {
   try {
@@ -433,12 +464,14 @@ async function getList<T = unknown>(url: string): Promise<T[]> {
   }
 }
 
+
 /* =========================
    Parse helpers
 ========================= */
 function parseCommaList(input: string): string[] {
   return input.split(",").map((s) => s.trim()).filter(Boolean);
 }
+
 
 /* =========================
    Main Component (Courses only)
@@ -447,12 +480,15 @@ export default function CoursesAdmin() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
 
+
   const [toast, setToast] = useState<ToastState>({ show: false });
   const [q, setQ] = useState("");
+
 
   // Create modal
   const [openCreate, setOpenCreate] = useState(false);
   const [creating, setCreating] = useState(false);
+
 
   // Edit modal
   const [openEdit, setOpenEdit] = useState(false);
@@ -460,14 +496,23 @@ export default function CoursesAdmin() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
 
+
   // Delete confirm
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(
     null
   );
 
+
   const defaultCategory = CATEGORY_LIST[0];
   const defaultSub = CATEGORY_MAP[defaultCategory][0];
+
+
+  // Created course ID (for redirect after creation)
+  const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
+
+
+
 
   const [formCourse, setFormCourse] = useState<CourseFormState>({
     title: "",
@@ -483,10 +528,12 @@ export default function CoursesAdmin() {
   });
   const [syllabusCourse, setSyllabusCourse] = useState<SyllabusSection[]>([]);
 
+
   const subOptions = useMemo(
     () => CATEGORY_MAP[formCourse.category] ?? [],
     [formCourse.category]
   );
+
 
   // keep subCategory valid if category changes
   useEffect(() => {
@@ -497,6 +544,7 @@ export default function CoursesAdmin() {
       }));
     }
   }, [subOptions, formCourse.subCategory]);
+
 
 useEffect(() => {
   let mounted = true;
@@ -516,6 +564,7 @@ useEffect(() => {
   };
 }, []); // ✅ no disable needed
 
+
   const query = q.trim().toLowerCase();
   const filteredCourses = useMemo(() => {
     if (!query) return courses;
@@ -526,6 +575,7 @@ useEffect(() => {
     );
   }, [courses, query]);
 
+
   function showToast(
     msg: string,
     type: Extract<ToastState, { show: true }>["type"] = "success"
@@ -533,6 +583,7 @@ useEffect(() => {
     setToast({ show: true, type, msg });
     setTimeout(() => setToast({ show: false }), 2500);
   }
+
 
   function resetForms() {
     setFormCourse({
@@ -550,10 +601,12 @@ useEffect(() => {
     setSyllabusCourse([]);
   }
 
+
   function askDelete(id: string, title: string) {
     setDeleteTarget({ id, title });
     setConfirmOpen(true);
   }
+
 
   async function confirmDelete() {
     if (!deleteTarget) return;
@@ -572,10 +625,12 @@ useEffect(() => {
     }
   }
 
+
   /* ========= Create ========= */
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (creating) return;
+
 
     const f = formCourse;
     if (
@@ -591,6 +646,7 @@ useEffect(() => {
       return;
     }
 
+
     const syl = syllabusCourse
       .filter((s) => s.title.trim())
       .map((s) => ({
@@ -599,6 +655,7 @@ useEffect(() => {
           ? { items: s.items.filter(Boolean).map((x) => x.trim()) }
           : {}),
       }));
+
 
     setCreating(true);
     const payload = {
@@ -615,6 +672,7 @@ useEffect(() => {
       syllabus: syl.length ? syl : undefined,
     };
 
+
     try {
       const res = await fetch("/api/course/courses", {
         method: "POST",
@@ -622,12 +680,14 @@ useEffect(() => {
         body: JSON.stringify(payload),
       });
 
+
       const data = await safeJson<
         (Course & { error?: unknown; message?: unknown }) | {
           error?: unknown;
           message?: unknown;
         } | null
       >(res, null);
+
 
       if (!res.ok || !data || !(data as Course)._id) {
         const maybeErr = data as { error?: unknown; message?: unknown } | null;
@@ -638,9 +698,14 @@ useEffect(() => {
         throw new Error(msg);
       }
 
+
       const created = data as Course;
       if (created._id) setCourses((p) => [created, ...p]);
       else setCourses(await getList<Course>("/api/course/courses"));
+
+
+      setCreatedCourseId(created._id); // 🔥 important
+
 
       showToast("Course added", "success");
       setOpenCreate(false);
@@ -654,6 +719,7 @@ useEffect(() => {
     }
   }
 
+
   /* ========= Edit ========= */
   async function startEdit(id: string) {
     setEditingId(id);
@@ -665,6 +731,7 @@ useEffect(() => {
       });
       const doc = await safeJson<Course | null>(res, null);
       if (!res.ok || !doc?._id) throw new Error("Failed to load course");
+
 
       setFormCourse({
         title: doc.title || "",
@@ -692,9 +759,11 @@ useEffect(() => {
     }
   }
 
+
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
     if (editing || !editingId) return;
+
 
     const f = formCourse;
     if (
@@ -710,6 +779,7 @@ useEffect(() => {
       return;
     }
 
+
     const syl = syllabusCourse
       .filter((s) => s.title.trim())
       .map((s) => ({
@@ -718,6 +788,7 @@ useEffect(() => {
           ? { items: s.items.filter(Boolean).map((x) => x.trim()) }
           : {}),
       }));
+
 
     setEditing(true);
     const payload = {
@@ -734,6 +805,7 @@ useEffect(() => {
       syllabus: syl.length ? syl : undefined,
     };
 
+
     try {
       const res = await fetch(`/api/course/courses/${editingId}`, {
         method: "PATCH",
@@ -741,12 +813,14 @@ useEffect(() => {
         body: JSON.stringify(payload),
       });
 
+
       const data = await safeJson<
         (Course & { error?: unknown; message?: unknown }) | {
           error?: unknown;
           message?: unknown;
         } | null
       >(res, null);
+
 
       if (!res.ok || !data || !(data as Course)._id) {
         const maybeErr = data as { error?: unknown; message?: unknown } | null;
@@ -757,7 +831,9 @@ useEffect(() => {
         throw new Error(msg);
       }
 
+
       const updated = data as Course;
+
 
       setCourses((prev) =>
         prev.map((c) => (c._id === updated._id ? { ...c, ...updated } : c))
@@ -775,6 +851,7 @@ useEffect(() => {
     }
   }
 
+
   function EmptyState(text: string) {
     return (
       <div className="py-12 text-center text-sm text-gray-500">
@@ -785,6 +862,7 @@ useEffect(() => {
       </div>
     );
   }
+
 
   function RowCourse({ c }: { c: Course }) {
     const link = c.href || (c.slug ? `/courses/${c.slug}` : "#");
@@ -842,6 +920,12 @@ useEffect(() => {
             >
               <Pencil size={16} /> Edit
             </button>
+            <a
+              href={`/admin/course/courses/${c._id}/landing`}
+              className="inline-flex items-center gap-1 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-sm text-orange-700 hover:bg-orange-100"
+            >
+              <FileText size={16} /> Landing
+            </a>
             <button
               onClick={() => askDelete(c._id, c.title)}
               className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-sm hover:bg-red-50 hover:text-red-600"
@@ -854,11 +938,13 @@ useEffect(() => {
     );
   }
 
+
   const livePreview =
     (formCourse.cover &&
       (formCourse.cover.startsWith("/") || formCourse.cover.startsWith("http"))) ||
     false;
   const perksPreview = parseCommaList(formCourse.perks).slice(0, 3);
+
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -870,7 +956,9 @@ useEffect(() => {
               <BookOpen size={18} /> Courses
             </div>
 
+
             <div className="flex-1" />
+
 
             <div className="relative w-full sm:w-80">
               <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
@@ -881,6 +969,7 @@ useEffect(() => {
                 className="w-full rounded-xl border bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm outline-none focus:border-orange-500"
               />
             </div>
+
 
             <div className="flex items-center gap-2">
               <button
@@ -896,6 +985,7 @@ useEffect(() => {
           </div>
         </div>
       </div>
+
 
       {/* Content */}
       <div className="mx-auto max-w-7xl px-6 py-6">
@@ -945,6 +1035,7 @@ useEffect(() => {
         </div>
       </div>
 
+
       {/* Toast */}
       <AnimatePresence>
         {toast.show && (
@@ -963,6 +1054,7 @@ useEffect(() => {
           </motion.div>
         )}
       </AnimatePresence>
+
 
       {/* Create Modal */}
       <Modal
@@ -989,43 +1081,81 @@ useEffect(() => {
           }}
           onSubmit={handleCreate}
         />
+        {createdCourseId && (
+  <div className="mt-6 border-t pt-4 flex justify-end">
+    <button
+      type="button"
+      onClick={() => {
+        window.location.href = `/admin/course/courses/${createdCourseId}/landing`;
+      }}
+      className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+    >
+      ➕ Add Landing Page
+    </button>
+  </div>
+)}
+
+
       </Modal>
 
-      {/* Edit Modal */}
-      <Modal
-        open={openEdit}
-        onClose={() => {
+
+     {/* Edit Modal */}
+<Modal
+  open={openEdit}
+  onClose={() => {
+    setOpenEdit(false);
+    setEditingId(null);
+    resetForms();
+  }}
+  title="Edit Course"
+  wide
+>
+  {editLoading ? (
+    <div className="flex items-center justify-center py-12 text-sm text-gray-600">
+      <Loader2 className="mr-2 animate-spin" size={16} /> Loading…
+    </div>
+  ) : (
+    <>
+      <CourseForm
+        formCourse={formCourse}
+        setFormCourse={setFormCourse}
+        syllabusCourse={syllabusCourse}
+        setSyllabusCourse={setSyllabusCourse}
+        subOptions={subOptions}
+        livePreview={livePreview}
+        perksPreview={perksPreview}
+        submitting={editing}
+        onCancel={() => {
           setOpenEdit(false);
           setEditingId(null);
           resetForms();
         }}
-        title="Edit Course"
-        wide
-      >
-        {editLoading ? (
-          <div className="flex items-center justify-center py-12 text-sm text-gray-600">
-            <Loader2 className="mr-2 animate-spin" size={16} /> Loading…
-          </div>
-        ) : (
-          <CourseForm
-            formCourse={formCourse}
-            setFormCourse={setFormCourse}
-            syllabusCourse={syllabusCourse}
-            setSyllabusCourse={setSyllabusCourse}
-            subOptions={subOptions}
-            livePreview={livePreview}
-            perksPreview={perksPreview}
-            submitting={editing}
-            onCancel={() => {
-              setOpenEdit(false);
-              setEditingId(null);
-              resetForms();
-            }}
-            onSubmit={handleUpdate}
-            isEdit
-          />
-        )}
-      </Modal>
+        onSubmit={handleUpdate}
+        isEdit
+      />
+
+
+      {editingId && (
+  <div className="mt-6 border-t pt-4 flex justify-end">
+    <button
+      type="button"
+      onClick={() =>
+        window.location.href = `/admin/course/courses/${editingId}/landing`
+      }
+      className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+    >
+      ✏️ Edit Landing Page
+    </button>
+  </div>
+)}
+
+
+    </>
+  )}
+</Modal>
+
+
+
 
       {/* Delete Confirm */}
       <Modal
@@ -1058,6 +1188,7 @@ useEffect(() => {
     </div>
   );
 }
+
 
 /* =========================
    Course Form (shared)
@@ -1103,6 +1234,7 @@ function CourseForm({
         />
       </Field>
 
+
       <Field label="Duration" required hint="e.g., 7h or 6 weeks">
         <input
           required
@@ -1116,6 +1248,7 @@ function CourseForm({
           }
         />
       </Field>
+
 
       <Field label="Cover (URL or Upload)" required>
         <UrlOrUpload
@@ -1131,6 +1264,7 @@ function CourseForm({
           buttonLabel="Upload cover"
         />
       </Field>
+
 
       <Field label="Level" required>
         <select
@@ -1151,6 +1285,7 @@ function CourseForm({
           ))}
         </select>
       </Field>
+
 
       <Field label="Category" required>
         <select
@@ -1175,6 +1310,7 @@ function CourseForm({
         </select>
       </Field>
 
+
       <Field label="Sub-Category" required>
         <select
           required
@@ -1195,6 +1331,7 @@ function CourseForm({
         </select>
       </Field>
 
+
       <Field label="Rating">
         <input
           type="number"
@@ -1212,6 +1349,7 @@ function CourseForm({
         />
       </Field>
 
+
       <Field label="Students">
         <input
           type="number"
@@ -1226,6 +1364,7 @@ function CourseForm({
           }
         />
       </Field>
+
 
       {/* Description */}
       <div className="md:col-span-2">
@@ -1243,6 +1382,7 @@ function CourseForm({
           />
         </Field>
       </div>
+
 
       {/* Perks */}
       <div className="md:col-span-2">
@@ -1263,6 +1403,7 @@ function CourseForm({
         </Field>
       </div>
 
+
       {/* Syllabus Builder */}
       <div className="md:col-span-2">
         <Field
@@ -1277,6 +1418,7 @@ function CourseForm({
           />
         </Field>
       </div>
+
 
       {/* Live Previews */}
       <div className="md:col-span-2">
@@ -1297,6 +1439,7 @@ function CourseForm({
               )}
             </div>
           </div>
+
 
           <div className="md:col-span-2">
             <div className="text-sm font-medium mb-2">Card Preview</div>
@@ -1338,9 +1481,11 @@ function CourseForm({
                     ) : null}
                   </div>
 
+
                   <p className="mt-2 line-clamp-2 text-sm text-gray-600">
                     {formCourse.desc || "Short description…"}
                   </p>
+
 
                   {perksPreview.length ? (
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -1360,6 +1505,7 @@ function CourseForm({
           </div>
         </div>
       </div>
+
 
       {/* Actions */}
       <div className="md:col-span-2 flex items-center justify-end gap-3 pt-2">
@@ -1384,10 +1530,15 @@ function CourseForm({
           )}
           {isEdit ? "Save changes" : "Create"}
         </button>
+
+
+
+
       </div>
     </form>
   );
 }
+
 
 /* =========================
    Modal (scrollable + body-lock + Esc)
@@ -1419,6 +1570,7 @@ function Modal({
       window.removeEventListener("keydown", onKey);
     };
   }, [open, onClose]);
+
 
   return (
     <AnimatePresence>
@@ -1458,3 +1610,6 @@ function Modal({
     </AnimatePresence>
   );
 }
+
+
+
